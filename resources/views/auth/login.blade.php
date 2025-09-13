@@ -116,25 +116,7 @@
         </div>
     </div>
 
-    <!-- chat box -->
-        <!-- Telegram Chat Box -->
-<div id="chatPopup" style="position: fixed; bottom: 20px; right: 20px; width: 320px; display: none; z-index: 1000;">
-    <div style="background: #007bff; color: white; padding: 10px; border-radius: 10px 10px 0 0; cursor: pointer;" onclick="toggleChat()">💬 Need Help?</div>
-    <div style="background: white; border: 1px solid #ccc; border-top: none; padding: 10px; max-height: 400px; overflow-y: auto;" id="chatBox">
-        <div><small>Bot: Hello! Welcome to PoneWine. Type your message below.</small></div>
-    </div>
-    <form id="chatForm" onsubmit="sendChat(event)" style="display: flex; border-top: 1px solid #ccc;">
-        <input type="text" id="chatInput" placeholder="Type..." required style="flex: 1; padding: 5px; border: none;">
-        <button type="submit" style="padding: 5px 10px; border: none; background: #007bff; color: white;">Send</button>
-    </form>
-</div>
-
-<!-- Chat Toggle Button -->
-<button onclick="toggleChat()" style="position: fixed; bottom: 20px; right: 20px; z-index: 999; background: #007bff; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 18px;">
-    💬
-</button>
-
-    <!-- chat box end -->
+    
 
 
     <script>
@@ -154,38 +136,7 @@
         }
     </script>
 
-    <!-- chat box -->
-    <script>
-    function toggleChat() {
-        const chat = document.getElementById('chatPopup');
-        chat.style.display = chat.style.display === 'none' ? 'block' : 'none';
-    }
-
-    async function sendChat(event) {
-        event.preventDefault();
-        const input = document.getElementById('chatInput');
-        const text = input.value.trim();
-        if (!text) return;
-
-        const chatBox = document.getElementById('chatBox');
-        chatBox.innerHTML += `<div><strong>You:</strong> ${text}</div>`;
-        input.value = '';
-
-        const res = await fetch('{{ route('web.telegram.send') }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ message: text })
-        });
-        const data = await res.json();
-        chatBox.innerHTML += `<div><strong>Bot:</strong> ${data.reply}</div>`;
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-</script>
-
-    <!-- chat box -->
+    
 
 <script>
         // rainbow-waves.js
@@ -253,61 +204,7 @@ function drawWaves() {
 
 drawWaves();
 
-// const canvas = document.getElementById('rainbow-bg');
-// const ctx = canvas.getContext('2d');
 
-// function resizeCanvas() {
-//     canvas.width = window.innerWidth;
-//     canvas.height = window.innerHeight;
-// }
-// resizeCanvas();
-// window.addEventListener('resize', resizeCanvas);
-
-// const colors = [
-//     '#FF3CAC', // pink
-//     '#784BA0', // purple
-//     '#2B86C5', // blue
-//     '#2FFFAF', // teal
-//     '#FFF720', // yellow
-//     '#FF3CAC'  // repeat for loop
-// ];
-
-// let t = 0;
-
-// function drawWaves() {
-//     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-//     let amplitude = 60;
-//     let waveCount = 5;
-//     let heightUnit = canvas.height / (waveCount + 1);
-
-//     for (let i = 0; i < waveCount; i++) {
-//         ctx.beginPath();
-//         for (let x = 0; x <= canvas.width; x += 2) {
-//             let angle = (x / 220) + t * (0.7 + 0.2 * i);
-//             let y = Math.sin(angle + i) * amplitude + (i + 1) * heightUnit;
-//             if (x === 0) ctx.moveTo(x, y);
-//             else ctx.lineTo(x, y);
-//         }
-//         ctx.lineTo(canvas.width, canvas.height);
-//         ctx.lineTo(0, canvas.height);
-//         ctx.closePath();
-
-//         // Create gradient for each wave
-//         let grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-//         grad.addColorStop(0, colors[i]);
-//         grad.addColorStop(1, colors[i + 1]);
-//         ctx.fillStyle = grad;
-//         ctx.globalAlpha = 0.28 + 0.15 * Math.sin(t + i);
-//         ctx.fill();
-//     }
-
-//     ctx.globalAlpha = 1;
-//     t += 0.012;
-//     requestAnimationFrame(drawWaves);
-// }
-
-// drawWaves();
 
     </script>
 

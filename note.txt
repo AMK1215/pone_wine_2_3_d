@@ -7,14 +7,14 @@ sudo apt install php8.3-pgsql
 sudo systemctl restart php8.3-fpm # Replace 8.1 with your PHP version
 sudo systemctl restart nginx
 
-php -r "file_put_contents('/var/www/a3h1_ttt/storage/logs/laravel.log', '');"
-* * * * * cd /var/www/gsc_plus && php artisan schedule:run >> /dev/null 2>&1
+php -r "file_put_contents('/var/www/pone_wine_2_3_d/storage/logs/laravel.log', '');"
+* * * * * cd /var/www/pone_wine_2_3_d && php artisan schedule:run >> /dev/null 2>&1
 tail -f /var/log/mysql/error.log
 
-sudo chown -R www-data:www-data /var/www/gsc_plus/storage
-sudo chown -R www-data:www-data /var/www/gsc_plus/bootstrap/cache
-sudo chmod -R 775 /var/www/gsc_plus/storage
-sudo chmod -R 775 /var/www/gsc_plus/bootstrap/cache
+sudo chown -R www-data:www-data /var/www/pone_wine_2_3_d/storage
+sudo chown -R www-data:www-data /var/www/pone_wine_2_3_d/bootstrap/cache
+sudo chmod -R 775 /var/www/pone_wine_2_3_d/storage
+sudo chmod -R 775 /var/www/pone_wine_2_3_d/bootstrap/cache
 
 php artisan analytics:loss-summary --group=member_account
 php artisan analytics:loss-summary --group=player_id
