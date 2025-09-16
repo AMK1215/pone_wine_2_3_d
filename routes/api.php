@@ -171,7 +171,7 @@ Route::post('/pone-wine/client-report', [PoneWineClientBalanceUpdateController::
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // route prefix shan 
-    Route::group(['prefix' => 'shankomee'], function () {
+    Route::group(['prefix' => 'ponewine'], function () {
        Route::post('/pone-wine/launch-game', [PoneWineLaunchGameController::class, 'launchGame']);
     });
 });
