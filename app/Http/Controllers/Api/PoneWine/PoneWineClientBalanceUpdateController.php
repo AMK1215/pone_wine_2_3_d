@@ -76,56 +76,44 @@ class PoneWineClientBalanceUpdateController extends Controller
                 }
 
                 $currentBalance = $user->wallet->balanceFloat; // Get current balance
-                $newBalance = $playerData['balance']; // New balance from provider
-                $balanceDifference = $newBalance - $currentBalance; // Calculate difference
+                $winLoseAmount = $playerData['winLoseAmount']; // Amount to add/subtract from provider
+                $providerExpectedBalance = $playerData['balance']; // Provider's expected final balance
 
                 Log::info('ClientSite: Processing player balance update', [
                     'player_id' => $user->user_name,
                     'current_balance' => $currentBalance,
-                    'new_balance' => $newBalance,
-                    'balance_difference' => $balanceDifference,
-                    'win_lose_amount' => $playerData['winLoseAmount'],
+                    'provider_expected_balance' => $providerExpectedBalance,
+                    'win_lose_amount' => $winLoseAmount,
                     'match_id' => $validated['matchId'],
                 ]);
-
-                // Validate that balance difference matches winLoseAmount (with small tolerance for floating point)
-                if (abs($balanceDifference - $playerData['winLoseAmount']) > 0.01) {
-                    Log::error('ClientSite: Balance difference does not match winLoseAmount', [
-                        'player_id' => $user->user_name,
-                        'balance_difference' => $balanceDifference,
-                        'win_lose_amount' => $playerData['winLoseAmount'],
-                        'match_id' => $validated['matchId'],
-                    ]);
-                    throw new \RuntimeException("Balance difference does not match winLoseAmount for player {$user->user_name}");
-                }
 
                 $meta = [
                     'match_id' => $validated['matchId'],
                     'room_id' => $validated['roomId'],
                     'win_number' => $validated['winNumber'],
-                    'provider_new_balance' => $newBalance,
+                    'provider_expected_balance' => $providerExpectedBalance,
                     'client_old_balance' => $currentBalance,
                     'description' => 'Pone Wine game settlement from provider',
                 ];
 
-                if ($balanceDifference > 0) {
+                if ($winLoseAmount > 0) {
                     // Player won or received funds
-                    $user->depositFloat($balanceDifference, $meta);
+                    $user->depositFloat($winLoseAmount, $meta);
                     Log::info('ClientSite: Deposited to player wallet', [
-                        'player_id' => $user->user_name, 'amount' => $balanceDifference,
+                        'player_id' => $user->user_name, 'amount' => $winLoseAmount,
                         'new_balance' => $user->wallet->balanceFloat, 'match_id' => $validated['matchId'],
                     ]);
-                } elseif ($balanceDifference < 0) {
+                } elseif ($winLoseAmount < 0) {
                     // Player lost or paid funds
-                    $user->forceWithdrawFloat(abs($balanceDifference), $meta);
+                    $user->forceWithdrawFloat(abs($winLoseAmount), $meta);
                     Log::info('ClientSite: Withdrew from player wallet', [
-                        'player_id' => $user->user_name, 'amount' => abs($balanceDifference),
+                        'player_id' => $user->user_name, 'amount' => abs($winLoseAmount),
                         'new_balance' => $user->wallet->balanceFloat, 'match_id' => $validated['matchId'],
                     ]);
                 } else {
                     // Balance is the same, no action needed
                     Log::info('ClientSite: Player balance unchanged', [
-                        'player_id' => $user->user_name, 'balance' => $newBalance, 'match_id' => $validated['matchId'],
+                        'player_id' => $user->user_name, 'balance' => $currentBalance, 'match_id' => $validated['matchId'],
                     ]);
                 }
 
@@ -133,7 +121,7 @@ class PoneWineClientBalanceUpdateController extends Controller
                 $responseData[] = [
                     'playerId' => $user->user_name,
                     'balance' => number_format($user->wallet->balanceFloat, 2, '.', ''),
-                    'amountChanged' => $balanceDifference
+                    'amountChanged' => $winLoseAmount
                 ];
 
                 // Refresh the user model to reflect the latest balance if needed for subsequent operations in the loop
