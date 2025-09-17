@@ -30,9 +30,11 @@ class PoneWineClientBalanceUpdateController extends Controller
                 'roomId' => 'required|integer',
                 'matchId' => 'required|string|max:255',
                 'winNumber' => 'required|integer',
+                'wagerCode' => 'required|string|max:255',
+                'signature' => 'required|string',
                 'players' => 'required|array',
                 'players.*.player_id' => 'required|string|max:255',
-                'players.*.balance' => 'required|numeric|min:0',
+                'players.*.balance' => 'required|numeric|min:0', // Player's NEW balance from provider
                 'players.*.winLoseAmount' => 'required|numeric',
                 'players.*.betInfos' => 'required|array',
                 'players.*.betInfos.*.betNumber' => 'required|integer',
@@ -50,7 +52,33 @@ class PoneWineClientBalanceUpdateController extends Controller
             ], 400);
         }
 
-        // No signature validation needed - provider doesn't send signature
+        $providerSecretKey = Config::get('shan_key.secret_key');
+        Log::info('ClientSite: Provider secret key', ['provider_secret_key' => $providerSecretKey]);
+        if (!$providerSecretKey) {
+            Log::critical('ClientSite: Provider secret key not configured!');
+            return response()->json([
+                'status' => 'error', 'code' => 'INTERNAL_ERROR', 'message' => 'Provider secret key not configured on client site.',
+            ], 500);
+        }
+
+        // Validate signature for security
+        $signature = $validated['signature'];
+        unset($validated['signature']); // Remove signature from payload for validation
+        ksort($validated);
+        $expectedSignature = hash_hmac('md5', json_encode($validated), $providerSecretKey);
+        
+        if (!hash_equals($expectedSignature, $signature)) {
+            Log::error('ClientSite: Invalid signature received', [
+                'expected' => $expectedSignature,
+                'received' => $signature,
+                'match_id' => $validated['matchId'],
+            ]);
+            return response()->json([
+                'status' => 'error',
+                'code' => 'INVALID_SIGNATURE',
+                'message' => 'Invalid signature provided.',
+            ], 401);
+        }
 
         
         try {
@@ -62,8 +90,6 @@ class PoneWineClientBalanceUpdateController extends Controller
                 Log::info('ClientSite: Duplicate match_id received, skipping processing.', ['match_id' => $validated['matchId']]);
                 return response()->json(['status' => 'success', 'code' => 'ALREADY_PROCESSED', 'message' => 'Match already processed.'], 200);
             }
-
-            $responseData = [];
 
             foreach ($validated['players'] as $playerData) {
                 $user = User::where('user_name', $playerData['player_id'])->first();
@@ -103,6 +129,7 @@ class PoneWineClientBalanceUpdateController extends Controller
                     'match_id' => $validated['matchId'],
                     'room_id' => $validated['roomId'],
                     'win_number' => $validated['winNumber'],
+                    'wager_code' => $validated['wagerCode'],
                     'provider_new_balance' => $newBalance,
                     'client_old_balance' => $currentBalance,
                     'description' => 'Pone Wine game settlement from provider',
@@ -117,6 +144,8 @@ class PoneWineClientBalanceUpdateController extends Controller
                     ]);
                 } elseif ($balanceDifference < 0) {
                     // Player lost or paid funds
+                    // Use forceWithdrawFloat if balance might go below zero (e.g., for game losses)
+                    // Otherwise, use withdrawFloat which checks for sufficient funds.
                     $user->forceWithdrawFloat(abs($balanceDifference), $meta);
                     Log::info('ClientSite: Withdrew from player wallet', [
                         'player_id' => $user->user_name, 'amount' => abs($balanceDifference),
@@ -128,13 +157,6 @@ class PoneWineClientBalanceUpdateController extends Controller
                         'player_id' => $user->user_name, 'balance' => $newBalance, 'match_id' => $validated['matchId'],
                     ]);
                 }
-
-                // Add to response data
-                $responseData[] = [
-                    'playerId' => $user->user_name,
-                    'balance' => number_format($user->wallet->balanceFloat, 2, '.', ''),
-                    'amountChanged' => $balanceDifference
-                ];
 
                 // Refresh the user model to reflect the latest balance if needed for subsequent operations in the loop
                 $user->refresh();
@@ -161,9 +183,7 @@ class PoneWineClientBalanceUpdateController extends Controller
             Log::info('ClientSite: All balances updated successfully', ['match_id' => $validated['matchId']]);
 
             return response()->json([
-                'status' => 'Request was successful.',
-                'message' => 'Transaction Successful',
-                'data' => $responseData
+                'status' => 'success', 'code' => 'SUCCESS', 'message' => 'Balances updated successfully.',
             ], 200);
 
         } catch (\Exception $e) {
