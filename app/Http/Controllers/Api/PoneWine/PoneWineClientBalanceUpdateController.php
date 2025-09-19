@@ -137,6 +137,12 @@ class PoneWineClientBalanceUpdateController extends Controller
             }
 
             // Store complete provider data if available
+            Log::info('ClientSite: About to store provider data', [
+                'has_pone_wine_bet' => isset($validated['pone_wine_bet']),
+                'has_pone_wine_player_bets' => isset($validated['pone_wine_player_bets']),
+                'has_pone_wine_bet_infos' => isset($validated['pone_wine_bet_infos']),
+                'match_id' => $validated['matchId'],
+            ]);
             $this->storeProviderData($validated);
 
             // Store game match data (fallback for basic data)
@@ -182,19 +188,33 @@ class PoneWineClientBalanceUpdateController extends Controller
      */
     private function storeProviderData(array $validated): void
     {
+        Log::info('ClientSite: Starting provider data storage', [
+            'match_id' => $validated['matchId'],
+            'available_keys' => array_keys($validated),
+        ]);
+
         // Store provider's PoneWineBet data if available
         if (isset($validated['pone_wine_bet']) && is_array($validated['pone_wine_bet'])) {
+            Log::info('ClientSite: Storing provider bet data');
             $this->storeProviderBetData($validated['pone_wine_bet']);
+        } else {
+            Log::info('ClientSite: No pone_wine_bet data found');
         }
 
         // Store provider's PoneWinePlayerBet data if available
         if (isset($validated['pone_wine_player_bets']) && is_array($validated['pone_wine_player_bets'])) {
+            Log::info('ClientSite: Storing provider player bets data');
             $this->storeProviderPlayerBets($validated['pone_wine_player_bets']);
+        } else {
+            Log::info('ClientSite: No pone_wine_player_bets data found');
         }
 
         // Store provider's PoneWineBetInfo data if available
         if (isset($validated['pone_wine_bet_infos']) && is_array($validated['pone_wine_bet_infos'])) {
+            Log::info('ClientSite: Storing provider bet infos data');
             $this->storeProviderBetInfos($validated['pone_wine_bet_infos']);
+        } else {
+            Log::info('ClientSite: No pone_wine_bet_infos data found');
         }
 
         Log::info('ClientSite: Provider data storage completed', [
@@ -241,16 +261,27 @@ class PoneWineClientBalanceUpdateController extends Controller
     {
         foreach ($playerBets as $playerBetData) {
             try {
-                // Update existing player bet or create new one with provider data
-                $playerBet = PoneWinePlayerBet::updateOrCreate(
-                    ['id' => $playerBetData['id']],
-                    [
+                // Check if this player bet already exists by user and bet combination
+                $existingPlayerBet = PoneWinePlayerBet::where('pone_wine_bet_id', $playerBetData['pone_wine_bet_id'])
+                    ->where('user_id', $playerBetData['user_id'])
+                    ->first();
+
+                if ($existingPlayerBet) {
+                    // Update existing record
+                    $existingPlayerBet->update([
+                        'user_name' => $playerBetData['user_name'],
+                        'win_lose_amt' => $playerBetData['win_lose_amt'],
+                    ]);
+                    $playerBet = $existingPlayerBet;
+                } else {
+                    // Create new record (let database assign new ID)
+                    $playerBet = PoneWinePlayerBet::create([
                         'pone_wine_bet_id' => $playerBetData['pone_wine_bet_id'],
                         'user_id' => $playerBetData['user_id'],
                         'user_name' => $playerBetData['user_name'],
                         'win_lose_amt' => $playerBetData['win_lose_amt'],
-                    ]
-                );
+                    ]);
+                }
 
                 // Store nested bet infos if available
                 if (isset($playerBetData['bet_infos']) && is_array($playerBetData['bet_infos'])) {
@@ -261,6 +292,7 @@ class PoneWineClientBalanceUpdateController extends Controller
                     'player_bet_id' => $playerBet->id,
                     'user_name' => $playerBet->user_name,
                     'win_lose_amt' => $playerBet->win_lose_amt,
+                    'provider_id' => $playerBetData['id'] ?? 'N/A',
                 ]);
             } catch (\Exception $e) {
                 Log::error('ClientSite: Failed to store provider player bet', [
@@ -278,20 +310,31 @@ class PoneWineClientBalanceUpdateController extends Controller
     {
         foreach ($betInfos as $betInfoData) {
             try {
-                // Update existing bet info or create new one with provider data
-                $betInfo = PoneWineBetInfo::updateOrCreate(
-                    ['id' => $betInfoData['id']],
-                    [
+                // Check if this bet info already exists
+                $existingBetInfo = PoneWineBetInfo::where('pone_wine_player_bet_id', $betInfoData['pone_wine_player_bet_id'])
+                    ->where('bet_no', $betInfoData['bet_no'])
+                    ->first();
+
+                if ($existingBetInfo) {
+                    // Update existing record
+                    $existingBetInfo->update([
+                        'bet_amount' => $betInfoData['bet_amount'],
+                    ]);
+                    $betInfo = $existingBetInfo;
+                } else {
+                    // Create new record (let database assign new ID)
+                    $betInfo = PoneWineBetInfo::create([
                         'bet_no' => $betInfoData['bet_no'],
                         'bet_amount' => $betInfoData['bet_amount'],
                         'pone_wine_player_bet_id' => $betInfoData['pone_wine_player_bet_id'],
-                    ]
-                );
+                    ]);
+                }
 
                 Log::info('ClientSite: Provider bet info stored', [
                     'bet_info_id' => $betInfo->id,
                     'bet_no' => $betInfo->bet_no,
                     'bet_amount' => $betInfo->bet_amount,
+                    'provider_id' => $betInfoData['id'] ?? 'N/A',
                 ]);
             } catch (\Exception $e) {
                 Log::error('ClientSite: Failed to store provider bet info', [
@@ -309,20 +352,31 @@ class PoneWineClientBalanceUpdateController extends Controller
     {
         foreach ($betInfos as $betInfoData) {
             try {
-                // Update existing bet info or create new one with provider data
-                $betInfo = PoneWineBetInfo::updateOrCreate(
-                    ['id' => $betInfoData['id']],
-                    [
+                // Check if this bet info already exists
+                $existingBetInfo = PoneWineBetInfo::where('pone_wine_player_bet_id', $playerBetId)
+                    ->where('bet_no', $betInfoData['bet_no'])
+                    ->first();
+
+                if ($existingBetInfo) {
+                    // Update existing record
+                    $existingBetInfo->update([
+                        'bet_amount' => $betInfoData['bet_amount'],
+                    ]);
+                    $betInfo = $existingBetInfo;
+                } else {
+                    // Create new record (let database assign new ID)
+                    $betInfo = PoneWineBetInfo::create([
                         'bet_no' => $betInfoData['bet_no'],
                         'bet_amount' => $betInfoData['bet_amount'],
                         'pone_wine_player_bet_id' => $playerBetId,
-                    ]
-                );
+                    ]);
+                }
 
                 Log::info('ClientSite: Provider nested bet info stored', [
                     'bet_info_id' => $betInfo->id,
                     'player_bet_id' => $playerBetId,
                     'bet_no' => $betInfo->bet_no,
+                    'provider_id' => $betInfoData['id'] ?? 'N/A',
                 ]);
             } catch (\Exception $e) {
                 Log::error('ClientSite: Failed to store provider nested bet info', [
