@@ -132,28 +132,28 @@
                         </div>
                         <div class="col-lg-2 col-6">
                             <div class="small-box bg-success">
-                                <div class="inner">
+                                <!-- <div class="inner">
                                     <h3>{{ number_format($agentTotals->total_wins ?? 0, 2) }}</h3>
                                     <p>Total Wins</p>
                                 </div>
                                 <div class="icon">
                                     <i class="fas fa-trophy"></i>
-                                </div>
+                                </div> -->
                             </div>
                         </div>
                         <div class="col-lg-2 col-6">
                             <div class="small-box bg-danger">
-                                <div class="inner">
+                                <!-- <div class="inner">
                                     <h3>{{ number_format($agentTotals->total_losses ?? 0, 2) }}</h3>
                                     <p>Total Losses</p>
                                 </div>
                                 <div class="icon">
                                     <i class="fas fa-chart-line-down"></i>
-                                </div>
+                                </div> -->
                             </div>
                         </div>
                         <div class="col-lg-2 col-6">
-                            <div class="small-box {{ ($agentTotals->net_result ?? 0) >= 0 ? 'bg-success' : 'bg-danger' }}">
+                            <!-- <div class="small-box {{ ($agentTotals->net_result ?? 0) >= 0 ? 'bg-success' : 'bg-danger' }}">
                                 <div class="inner">
                                     <h3>{{ number_format($agentTotals->net_result ?? 0, 2) }}</h3>
                                     <p>Net Result</p>
@@ -161,7 +161,7 @@
                                 <div class="icon">
                                     <i class="fas fa-chart-line"></i>
                                 </div>
-                            </div>
+                            </div> -->
                         </div>
                     </div>
 
