@@ -71,7 +71,7 @@
 
                     <!-- Summary Cards -->
                     <div class="row mb-4">
-                        <div class="col-lg-3 col-6">
+                        <div class="col-lg-2 col-6">
                             <div class="small-box bg-info">
                                 <div class="inner">
                                     <h3>{{ $totals->total_games ?? 0 }}</h3>
@@ -82,7 +82,18 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-6">
+                        <div class="col-lg-2 col-6">
+                            <div class="small-box bg-primary">
+                                <div class="inner">
+                                    <h3>{{ $totals->total_agents ?? 0 }}</h3>
+                                    <p>Total Agents</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-user-tie"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-6">
                             <div class="small-box bg-success">
                                 <div class="inner">
                                     <h3>{{ $totals->total_players ?? 0 }}</h3>
@@ -93,7 +104,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-6">
+                        <div class="col-lg-2 col-6">
                             <div class="small-box bg-warning">
                                 <div class="inner">
                                     <h3>{{ number_format($totals->total_bet_amount ?? 0, 2) }}</h3>
@@ -104,7 +115,18 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-6">
+                        <div class="col-lg-2 col-6">
+                            <div class="small-box bg-secondary">
+                                <div class="inner">
+                                    <h3>{{ $totals->total_bets ?? 0 }}</h3>
+                                    <p>Total Bets</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-ticket-alt"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-6">
                             <div class="small-box {{ ($totals->net_result ?? 0) >= 0 ? 'bg-success' : 'bg-danger' }}">
                                 <div class="inner">
                                     <h3>{{ number_format($totals->net_result ?? 0, 2) }}</h3>
@@ -117,73 +139,70 @@
                         </div>
                     </div>
 
-                    <!-- Report Table -->
+                    <!-- Agent Report Table -->
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped table-hover">
                             <thead class="thead-dark">
                                 <tr>
                                     <th width="5%">No</th>
-                                    <th width="8%">Game ID</th>
-                                    <th width="8%">Room ID</th>
-                                    <th width="12%">Match ID</th>
-                                    <th width="8%">Win Number</th>
-                                    <th width="12%">Player Name</th>
-                                    <th width="8%">Bet Number</th>
-                                    <th width="10%">Bet Amount</th>
-                                    <th width="12%">Win/Lose Amount</th>
-                                    <th width="8%">Result</th>
-                                    <th width="9%">Game Date</th>
+                                    <th width="15%">Agent Name</th>
+                                    <th width="8%">Total Games</th>
+                                    <th width="8%">Total Players</th>
+                                    <th width="8%">Total Bets</th>
+                                    <th width="12%">Total Bet Amount</th>
+                                    <th width="10%">Total Wins</th>
+                                    <th width="10%">Total Losses</th>
+                                    <th width="12%">Net Result</th>
+                                    <th width="12%">Last Game Date</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($reports as $index => $report)
+                                @forelse($agentReports as $index => $agent)
                                     <tr>
-                                        <td>{{ ($reports->currentPage() - 1) * $reports->perPage() + $index + 1 }}</td>
+                                        <td>{{ ($agentReports->currentPage() - 1) * $agentReports->perPage() + $index + 1 }}</td>
                                         <td>
-                                            <span class="badge badge-secondary">{{ $report->game_id }}</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-info">{{ $report->room_id }}</span>
-                                        </td>
-                                        <td>
-                                            <small class="text-muted">{{ Str::limit($report->match_id, 15) }}</small>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-primary">{{ $report->win_number }}</span>
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('admin.ponewine.report.player.detail', $report->user_id ?? '') }}" 
+                                            <a href="{{ route('admin.ponewine.report.agent.detail', $agent->player_agent_id ?? '') }}" 
                                                class="text-primary font-weight-bold">
-                                                {{ $report->user_name }}
+                                                <i class="fas fa-user-tie mr-1"></i>
+                                                {{ $agent->player_agent_name ?? 'Unknown Agent' }}
                                             </a>
+                                            <br>
+                                            <small class="text-muted">ID: {{ $agent->player_agent_id }}</small>
                                         </td>
-                                        <td>
-                                            <span class="badge badge-warning">{{ $report->bet_no }}</span>
+                                        <td class="text-center">
+                                            <span class="badge badge-info">{{ $agent->total_games }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge badge-success">{{ $agent->total_players }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge badge-secondary">{{ $agent->total_bets }}</span>
                                         </td>
                                         <td class="text-right">
-                                            <strong>{{ number_format($report->bet_amount, 2) }}</strong>
+                                            <strong>{{ number_format($agent->total_bet_amount, 2) }}</strong>
                                         </td>
                                         <td class="text-right">
-                                            <span class="font-weight-bold {{ $report->win_lose_amt >= 0 ? 'text-success' : 'text-danger' }}">
-                                                {{ $report->win_lose_amt >= 0 ? '+' : '' }}{{ number_format($report->win_lose_amt, 2) }}
+                                            <span class="text-success font-weight-bold">
+                                                {{ number_format($agent->total_wins, 2) }}
+                                            </span>
+                                        </td>
+                                        <td class="text-right">
+                                            <span class="text-danger font-weight-bold">
+                                                {{ number_format($agent->total_losses, 2) }}
+                                            </span>
+                                        </td>
+                                        <td class="text-right">
+                                            <span class="font-weight-bold {{ $agent->net_result >= 0 ? 'text-success' : 'text-danger' }}">
+                                                {{ $agent->net_result >= 0 ? '+' : '' }}{{ number_format($agent->net_result, 2) }}
                                             </span>
                                         </td>
                                         <td>
-                                            @if($report->result == 'Win')
-                                                <span class="badge badge-success">{{ $report->result }}</span>
-                                            @elseif($report->result == 'Lose')
-                                                <span class="badge badge-danger">{{ $report->result }}</span>
-                                            @else
-                                                <span class="badge badge-secondary">{{ $report->result }}</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <small>{{ \Carbon\Carbon::parse($report->game_date)->format('M d, Y H:i') }}</small>
+                                            <small>{{ \Carbon\Carbon::parse($agent->last_game_date)->format('M d, Y H:i') }}</small>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="11" class="text-center text-muted py-4">
+                                        <td colspan="10" class="text-center text-muted py-4">
                                             <i class="fas fa-inbox fa-2x mb-2"></i><br>
                                             No PoneWine game data found for the selected criteria.
                                         </td>
@@ -195,7 +214,7 @@
 
                     <!-- Pagination -->
                     <div class="d-flex justify-content-center mt-4">
-                        {{ $reports->withQueryString()->links() }}
+                        {{ $agentReports->withQueryString()->links() }}
                     </div>
                 </div>
             </div>

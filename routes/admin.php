@@ -286,6 +286,7 @@ Route::group([
     // PoneWine reports
     Route::group(['prefix' => 'ponewine'], function () {
         Route::get('/report', [PoneWineReportController::class, 'index'])->name('ponewine.report.index');
+        Route::get('/report/agent/{agentId}', [PoneWineReportController::class, 'agentDetail'])->name('ponewine.report.agent.detail');
         Route::get('/report/player/{playerId}', [PoneWineReportController::class, 'playerDetail'])->name('ponewine.report.player.detail');
         Route::get('/report/export', [PoneWineReportController::class, 'exportCsv'])->name('ponewine.report.export');
     });

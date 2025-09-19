@@ -3,9 +3,7 @@
 namespace App\Http\Controllers\Admin\PoneWine;
 
 use App\Http\Controllers\Controller;
-use App\Models\PoneWineBet;
-use App\Models\PoneWinePlayerBet;
-use App\Models\PoneWineBetInfo;
+use App\Models\PoneWineTransaction;
 use App\Models\User;
 use App\Enums\UserType;
 use Illuminate\Http\Request;
@@ -15,177 +13,125 @@ use Illuminate\Support\Facades\DB;
 class PoneWineReportController extends Controller
 {
     /**
-     * Show the PoneWine game report based on user role
+     * Show the PoneWine game report grouped by agent
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        $query = $this->buildQuery($user, $request);
+        $query = PoneWineTransaction::forUser($user);
 
+        // Apply filters
+        $query = $this->applyFilters($query, $request);
+
+        // Group by agent and get summary data
+        $agentReports = $query->select([
+            'player_agent_id',
+            'player_agent_name',
+            DB::raw('COUNT(DISTINCT match_id) as total_games'),
+            DB::raw('COUNT(DISTINCT user_id) as total_players'),
+            DB::raw('COUNT(*) as total_bets'),
+            DB::raw('SUM(bet_amount) as total_bet_amount'),
+            DB::raw('SUM(CASE WHEN result = "Win" THEN win_lose_amount ELSE 0 END) as total_wins'),
+            DB::raw('SUM(CASE WHEN result = "Lose" THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
+            DB::raw('SUM(win_lose_amount) as net_result'),
+            DB::raw('MAX(created_at) as last_game_date'),
+        ])
+        ->groupBy('player_agent_id', 'player_agent_name')
+        ->orderByDesc('total_bet_amount')
+        ->paginate(20);
+
+        // Calculate overall totals
+        $totals = $this->calculateOverallTotals($user, $request);
+
+        return view('admin.ponewine.report.index', compact('agentReports', 'totals'));
+    }
+
+    /**
+     * Show detailed transactions for a specific agent
+     */
+    public function agentDetail(Request $request, $agentId)
+    {
+        $user = Auth::user();
+        $agent = User::findOrFail($agentId);
+
+        // Check if user has permission to view this agent's data
+        $this->checkAgentAccess($user, $agent);
+
+        $query = PoneWineTransaction::forUser($user)
+            ->where('player_agent_id', $agentId);
+
+        // Apply filters
+        $query = $this->applyFilters($query, $request);
+
+        $transactions = $query->orderByDesc('created_at')->paginate(20);
+
+        // Calculate agent totals
+        $agentTotals = $this->calculateAgentTotals($agentId, $request);
+
+        return view('admin.ponewine.report.agent_detail', compact('transactions', 'agent', 'agentTotals'));
+    }
+
+    /**
+     * Apply filters to the query
+     */
+    private function applyFilters($query, Request $request)
+    {
         // Apply date filter if provided
         if ($request->filled('date_from') && $request->filled('date_to')) {
-            $query->whereBetween('pone_wine_bets.created_at', [
-                $request->input('date_from') . ' 00:00:00',
-                $request->input('date_to') . ' 23:59:59',
-            ]);
+            $query->dateRange($request->input('date_from'), $request->input('date_to'));
         }
 
         // Apply player filter if provided
         if ($request->filled('player_name')) {
-            $query->where('pone_wine_player_bets.user_name', 'like', '%' . $request->input('player_name') . '%');
+            $query->byPlayer($request->input('player_name'));
         }
 
         // Apply room filter if provided
         if ($request->filled('room_id')) {
-            $query->where('pone_wine_bets.room_id', $request->input('room_id'));
-        }
-
-        $reports = $query->orderByDesc('pone_wine_bets.created_at')
-                        ->paginate(20);
-
-        // Calculate totals
-        $totals = $this->calculateTotals($query);
-
-        return view('admin.ponewine.report.index', compact('reports', 'totals'));
-    }
-
-    /**
-     * Build query based on user role and permissions
-     */
-    private function buildQuery($user, Request $request)
-    {
-        $query = DB::table('pone_wine_bets')
-            ->join('pone_wine_player_bets', 'pone_wine_bets.id', '=', 'pone_wine_player_bets.pone_wine_bet_id')
-            ->join('users', 'pone_wine_player_bets.user_id', '=', 'users.id')
-            ->join('pone_wine_bet_infos', 'pone_wine_player_bets.id', '=', 'pone_wine_bet_infos.pone_wine_player_bet_id')
-            ->select([
-                'pone_wine_bets.id as game_id',
-                'pone_wine_bets.room_id',
-                'pone_wine_bets.match_id',
-                'pone_wine_bets.win_number',
-                'pone_wine_bets.created_at as game_date',
-                'pone_wine_player_bets.user_name',
-                'pone_wine_player_bets.win_lose_amt',
-                'pone_wine_bet_infos.bet_no',
-                'pone_wine_bet_infos.bet_amount',
-                DB::raw('CASE 
-                    WHEN pone_wine_player_bets.win_lose_amt > 0 THEN "Win"
-                    WHEN pone_wine_player_bets.win_lose_amt < 0 THEN "Lose"
-                    ELSE "Draw"
-                END as result')
-            ]);
-
-        // Apply role-based filtering
-        switch ($user->type) {
-            case UserType::Owner->value:
-                // Owner can see all data
-                break;
-
-            case UserType::Master->value:
-                // Master can see all agents' and players' data
-                $playerIds = $user->getAllDescendantPlayers()->pluck('id');
-                $query->whereIn('pone_wine_player_bets.user_id', $playerIds);
-                break;
-
-            case UserType::Agent->value:
-                // Agent can see only their players' data
-                $playerIds = $user->getAllDescendantPlayers()->pluck('id');
-                $query->whereIn('pone_wine_player_bets.user_id', $playerIds);
-                break;
-
-            case UserType::SubAgent->value:
-                // SubAgent can see only their players' data
-                $playerIds = $user->getAllDescendantPlayers()->pluck('id');
-                $query->whereIn('pone_wine_player_bets.user_id', $playerIds);
-                break;
-
-            case UserType::Player->value:
-                // Player can see only their own data
-                $query->where('pone_wine_player_bets.user_id', $user->id);
-                break;
-
-            default:
-                // No data for unknown user types
-                $query->whereRaw('1 = 0');
-                break;
+            $query->byRoom($request->input('room_id'));
         }
 
         return $query;
     }
 
     /**
-     * Calculate totals for the filtered data
+     * Calculate overall totals for the filtered data
      */
-    private function calculateTotals($query)
+    private function calculateOverallTotals($user, Request $request)
     {
-        // Create a new query without joins for totals calculation
-        $totalsQuery = DB::table('pone_wine_bets')
-            ->join('pone_wine_player_bets', 'pone_wine_bets.id', '=', 'pone_wine_player_bets.pone_wine_bet_id')
-            ->join('pone_wine_bet_infos', 'pone_wine_player_bets.id', '=', 'pone_wine_bet_infos.pone_wine_player_bet_id');
-
-        // Apply the same filters as the main query
-        $user = Auth::user();
+        $query = PoneWineTransaction::forUser($user);
+        $query = $this->applyFilters($query, $request);
         
-        // Apply role-based filtering
-        switch ($user->type) {
-            case UserType::Owner->value:
-                // Owner can see all data
-                break;
+        $totals = $query->select([
+            DB::raw('COUNT(DISTINCT match_id) as total_games'),
+            DB::raw('COUNT(DISTINCT user_id) as total_players'),
+            DB::raw('COUNT(DISTINCT player_agent_id) as total_agents'),
+            DB::raw('COUNT(*) as total_bets'),
+            DB::raw('SUM(bet_amount) as total_bet_amount'),
+            DB::raw('SUM(CASE WHEN result = "Win" THEN win_lose_amount ELSE 0 END) as total_wins'),
+            DB::raw('SUM(CASE WHEN result = "Lose" THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
+            DB::raw('SUM(win_lose_amount) as net_result')
+        ])->first();
 
-            case UserType::Master->value:
-                // Master can see all agents' and players' data
-                $playerIds = $user->getAllDescendantPlayers()->pluck('id');
-                $totalsQuery->whereIn('pone_wine_player_bets.user_id', $playerIds);
-                break;
+        return $totals;
+    }
 
-            case UserType::Agent->value:
-                // Agent can see only their players' data
-                $playerIds = $user->getAllDescendantPlayers()->pluck('id');
-                $totalsQuery->whereIn('pone_wine_player_bets.user_id', $playerIds);
-                break;
-
-            case UserType::SubAgent->value:
-                // SubAgent can see only their players' data
-                $playerIds = $user->getAllDescendantPlayers()->pluck('id');
-                $totalsQuery->whereIn('pone_wine_player_bets.user_id', $playerIds);
-                break;
-
-            case UserType::Player->value:
-                // Player can see only their own data
-                $totalsQuery->where('pone_wine_player_bets.user_id', $user->id);
-                break;
-
-            default:
-                // No data for unknown user types
-                $totalsQuery->whereRaw('1 = 0');
-                break;
-        }
-
-        // Apply date filter if provided
-        if (request()->filled('date_from') && request()->filled('date_to')) {
-            $totalsQuery->whereBetween('pone_wine_bets.created_at', [
-                request()->input('date_from') . ' 00:00:00',
-                request()->input('date_to') . ' 23:59:59',
-            ]);
-        }
-
-        // Apply player filter if provided
-        if (request()->filled('player_name')) {
-            $totalsQuery->where('pone_wine_player_bets.user_name', 'like', '%' . request()->input('player_name') . '%');
-        }
-
-        // Apply room filter if provided
-        if (request()->filled('room_id')) {
-            $totalsQuery->where('pone_wine_bets.room_id', request()->input('room_id'));
-        }
+    /**
+     * Calculate totals for a specific agent
+     */
+    private function calculateAgentTotals($agentId, Request $request)
+    {
+        $query = PoneWineTransaction::where('player_agent_id', $agentId);
+        $query = $this->applyFilters($query, $request);
         
-        $totals = $totalsQuery->select([
-            DB::raw('COUNT(DISTINCT pone_wine_bets.id) as total_games'),
-            DB::raw('COUNT(DISTINCT pone_wine_player_bets.user_id) as total_players'),
-            DB::raw('SUM(pone_wine_bet_infos.bet_amount) as total_bet_amount'),
-            DB::raw('SUM(CASE WHEN pone_wine_player_bets.win_lose_amt > 0 THEN pone_wine_player_bets.win_lose_amt ELSE 0 END) as total_wins'),
-            DB::raw('SUM(CASE WHEN pone_wine_player_bets.win_lose_amt < 0 THEN ABS(pone_wine_player_bets.win_lose_amt) ELSE 0 END) as total_losses'),
-            DB::raw('SUM(pone_wine_player_bets.win_lose_amt) as net_result')
+        $totals = $query->select([
+            DB::raw('COUNT(DISTINCT match_id) as total_games'),
+            DB::raw('COUNT(DISTINCT user_id) as total_players'),
+            DB::raw('COUNT(*) as total_bets'),
+            DB::raw('SUM(bet_amount) as total_bet_amount'),
+            DB::raw('SUM(CASE WHEN result = "Win" THEN win_lose_amount ELSE 0 END) as total_wins'),
+            DB::raw('SUM(CASE WHEN result = "Lose" THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
+            DB::raw('SUM(win_lose_amount) as net_result')
         ])->first();
 
         return $totals;
@@ -202,39 +148,20 @@ class PoneWineReportController extends Controller
         // Check if user has permission to view this player's data
         $this->checkPlayerAccess($user, $player);
 
-        $query = DB::table('pone_wine_bets')
-            ->join('pone_wine_player_bets', 'pone_wine_bets.id', '=', 'pone_wine_player_bets.pone_wine_bet_id')
-            ->join('pone_wine_bet_infos', 'pone_wine_player_bets.id', '=', 'pone_wine_bet_infos.pone_wine_player_bet_id')
-            ->where('pone_wine_player_bets.user_id', $playerId)
-            ->select([
-                'pone_wine_bets.id as game_id',
-                'pone_wine_bets.room_id',
-                'pone_wine_bets.match_id',
-                'pone_wine_bets.win_number',
-                'pone_wine_bets.created_at as game_date',
-                'pone_wine_player_bets.win_lose_amt',
-                'pone_wine_bet_infos.bet_no',
-                'pone_wine_bet_infos.bet_amount',
-                DB::raw('CASE 
-                    WHEN pone_wine_player_bets.win_lose_amt > 0 THEN "Win"
-                    WHEN pone_wine_player_bets.win_lose_amt < 0 THEN "Lose"
-                    ELSE "Draw"
-                END as result')
-            ]);
+        $query = PoneWineTransaction::where('user_id', $playerId);
+        $query = $this->applyFilters($query, $request);
 
-        // Apply date filter if provided
-        if ($request->filled('date_from') && $request->filled('date_to')) {
-            $query->whereBetween('pone_wine_bets.created_at', [
-                $request->input('date_from') . ' 00:00:00',
-                $request->input('date_to') . ' 23:59:59',
-            ]);
-        }
-
-        $playerReports = $query->orderByDesc('pone_wine_bets.created_at')
-                              ->paginate(20);
+        $playerReports = $query->orderByDesc('created_at')->paginate(20);
 
         // Calculate player totals
-        $playerTotals = $this->calculateTotals($query);
+        $playerTotals = $query->select([
+            DB::raw('COUNT(DISTINCT match_id) as total_games'),
+            DB::raw('COUNT(*) as total_bets'),
+            DB::raw('SUM(bet_amount) as total_bet_amount'),
+            DB::raw('SUM(CASE WHEN result = "Win" THEN win_lose_amount ELSE 0 END) as total_wins'),
+            DB::raw('SUM(CASE WHEN result = "Lose" THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
+            DB::raw('SUM(win_lose_amount) as net_result')
+        ])->first();
 
         return view('admin.ponewine.report.player_detail', compact('playerReports', 'player', 'playerTotals'));
     }
@@ -286,14 +213,44 @@ class PoneWineReportController extends Controller
     }
 
     /**
+     * Check if user has access to view a specific agent's data
+     */
+    private function checkAgentAccess($user, $agent)
+    {
+        switch ($user->type) {
+            case UserType::Owner->value:
+                // Owner can see all
+                return true;
+
+            case UserType::Master->value:
+                // Master can see all their agents
+                if ($agent->agent_id !== $user->id) {
+                    abort(403, 'Unauthorized access to agent data');
+                }
+                return true;
+
+            case UserType::Agent->value:
+                // Agent can see only their own data
+                if ($user->id !== $agent->id) {
+                    abort(403, 'Unauthorized access to agent data');
+                }
+                return true;
+
+            default:
+                abort(403, 'Unauthorized access');
+        }
+    }
+
+    /**
      * Export report to CSV
      */
     public function exportCsv(Request $request)
     {
         $user = Auth::user();
-        $query = $this->buildQuery($user, $request);
+        $query = PoneWineTransaction::forUser($user);
+        $query = $this->applyFilters($query, $request);
 
-        $reports = $query->orderByDesc('pone_wine_bets.created_at')->get();
+        $reports = $query->orderByDesc('created_at')->get();
 
         $filename = 'ponewine_report_' . date('Y-m-d_H-i-s') . '.csv';
         
@@ -308,15 +265,17 @@ class PoneWineReportController extends Controller
             // Add CSV headers
             fputcsv($file, [
                 'No',
-                'Game ID',
                 'Room ID', 
                 'Match ID',
                 'Win Number',
                 'Player Name',
+                'Agent Name',
                 'Bet Number',
                 'Bet Amount',
                 'Win/Lose Amount',
                 'Result',
+                'Balance Before',
+                'Balance After',
                 'Game Date'
             ]);
 
@@ -324,16 +283,18 @@ class PoneWineReportController extends Controller
             foreach ($reports as $report) {
                 fputcsv($file, [
                     $counter++,
-                    $report->game_id,
                     $report->room_id,
                     $report->match_id,
                     $report->win_number,
                     $report->user_name,
-                    $report->bet_no,
+                    $report->player_agent_name,
+                    $report->bet_number,
                     $report->bet_amount,
-                    $report->win_lose_amt,
+                    $report->win_lose_amount,
                     $report->result,
-                    $report->game_date
+                    $report->player_balance_before,
+                    $report->player_balance_after,
+                    $report->created_at
                 ]);
             }
 
