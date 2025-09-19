@@ -162,16 +162,20 @@ class PoneWineReportController extends Controller
         // Check if user has permission to view this player's data
         $this->checkPlayerAccess($user, $player);
 
-        $query = PoneWineTransaction::where('user_id', $playerId);
+        $baseQuery = PoneWineTransaction::where('user_id', $playerId);
 
         // Filter out direct wins (bet_number = win_number) to show only complex game logic
-        $query->whereColumn('bet_number', '!=', 'win_number');
-        $query = $this->applyFilters($query, $request);
+        $baseQuery->whereColumn('bet_number', '!=', 'win_number');
+        $baseQuery = $this->applyFilters($baseQuery, $request);
 
-        $playerReports = $query->orderByDesc('created_at')->paginate(20);
+        // Get paginated results
+        $playerReports = $baseQuery->orderByDesc('created_at')->paginate(20);
 
-        // Calculate player totals
-        $playerTotals = $query->select([
+        // Calculate player totals using a separate query (without orderBy)
+        $playerTotals = PoneWineTransaction::where('user_id', $playerId)
+            ->whereColumn('bet_number', '!=', 'win_number');
+        $playerTotals = $this->applyFilters($playerTotals, $request);
+        $playerTotals = $playerTotals->select([
             DB::raw('COUNT(DISTINCT match_id) as total_games'),
             DB::raw('COUNT(*) as total_bets'),
             DB::raw('SUM(bet_amount) as total_bet_amount'),
