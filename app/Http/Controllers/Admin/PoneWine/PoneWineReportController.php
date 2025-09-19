@@ -118,7 +118,66 @@ class PoneWineReportController extends Controller
      */
     private function calculateTotals($query)
     {
-        $totalsQuery = clone $query;
+        // Create a new query without joins for totals calculation
+        $totalsQuery = DB::table('pone_wine_bets')
+            ->join('pone_wine_player_bets', 'pone_wine_bets.id', '=', 'pone_wine_player_bets.pone_wine_bet_id')
+            ->join('pone_wine_bet_infos', 'pone_wine_player_bets.id', '=', 'pone_wine_bet_infos.pone_wine_player_bet_id');
+
+        // Apply the same filters as the main query
+        $user = Auth::user();
+        
+        // Apply role-based filtering
+        switch ($user->type) {
+            case UserType::Owner->value:
+                // Owner can see all data
+                break;
+
+            case UserType::Master->value:
+                // Master can see all agents' and players' data
+                $playerIds = $user->getAllDescendantPlayers()->pluck('id');
+                $totalsQuery->whereIn('pone_wine_player_bets.user_id', $playerIds);
+                break;
+
+            case UserType::Agent->value:
+                // Agent can see only their players' data
+                $playerIds = $user->getAllDescendantPlayers()->pluck('id');
+                $totalsQuery->whereIn('pone_wine_player_bets.user_id', $playerIds);
+                break;
+
+            case UserType::SubAgent->value:
+                // SubAgent can see only their players' data
+                $playerIds = $user->getAllDescendantPlayers()->pluck('id');
+                $totalsQuery->whereIn('pone_wine_player_bets.user_id', $playerIds);
+                break;
+
+            case UserType::Player->value:
+                // Player can see only their own data
+                $totalsQuery->where('pone_wine_player_bets.user_id', $user->id);
+                break;
+
+            default:
+                // No data for unknown user types
+                $totalsQuery->whereRaw('1 = 0');
+                break;
+        }
+
+        // Apply date filter if provided
+        if (request()->filled('date_from') && request()->filled('date_to')) {
+            $totalsQuery->whereBetween('pone_wine_bets.created_at', [
+                request()->input('date_from') . ' 00:00:00',
+                request()->input('date_to') . ' 23:59:59',
+            ]);
+        }
+
+        // Apply player filter if provided
+        if (request()->filled('player_name')) {
+            $totalsQuery->where('pone_wine_player_bets.user_name', 'like', '%' . request()->input('player_name') . '%');
+        }
+
+        // Apply room filter if provided
+        if (request()->filled('room_id')) {
+            $totalsQuery->where('pone_wine_bets.room_id', request()->input('room_id'));
+        }
         
         $totals = $totalsQuery->select([
             DB::raw('COUNT(DISTINCT pone_wine_bets.id) as total_games'),
