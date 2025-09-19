@@ -130,7 +130,7 @@
                             </div>
                         </div>
                         <div class="col-lg-2 col-6">
-                            <div class="small-box {{ ($totals->net_result ?? 0) >= 0 ? 'bg-success' : 'bg-danger' }}">
+                            <!-- <div class="small-box {{ ($totals->net_result ?? 0) >= 0 ? 'bg-success' : 'bg-danger' }}">
                                 <div class="inner">
                                     <h3>{{ number_format($totals->net_result ?? 0, 2) }}</h3>
                                     <p>Net Result</p>
@@ -138,7 +138,7 @@
                                 <div class="icon">
                                     <i class="fas fa-chart-line"></i>
                                 </div>
-                            </div>
+                            </div> -->
                         </div>
                     </div>
 
@@ -153,9 +153,9 @@
                                     <th width="8%">Total Players</th>
                                     <th width="8%">Total Bets</th>
                                     <th width="12%">Total Bet Amount</th>
-                                    <th width="10%">Total Wins</th>
+                                    <!-- <th width="10%">Total Wins</th>
                                     <th width="10%">Total Losses</th>
-                                    <th width="12%">Net Result</th>
+                                    <th width="12%">Net Result</th> -->
                                     <th width="12%">Last Game Date</th>
                                 </tr>
                             </thead>
@@ -184,7 +184,7 @@
                                         <td class="text-right">
                                             <strong>{{ number_format($agent->total_bet_amount, 2) }}</strong>
                                         </td>
-                                        <td class="text-right">
+                                        <!-- <td class="text-right">
                                             <span class="text-success font-weight-bold">
                                                 {{ number_format($agent->total_wins, 2) }}
                                             </span>
@@ -198,7 +198,7 @@
                                             <span class="font-weight-bold {{ $agent->net_result >= 0 ? 'text-success' : 'text-danger' }}">
                                                 {{ $agent->net_result >= 0 ? '+' : '' }}{{ number_format($agent->net_result, 2) }}
                                             </span>
-                                        </td>
+                                        </td> -->
                                         <td>
                                             <small>{{ \Carbon\Carbon::parse($agent->last_game_date)->format('M d, Y H:i') }}</small>
                                         </td>
