@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Config;
 use App\Models\PoneWineBet;
 use App\Models\PoneWineBetInfo;
 use App\Models\PoneWinePlayerBet;
+use App\Models\PoneWineTransaction;
 use Bavix\Wallet\External\Dto\Extra; 
 use Bavix\Wallet\External\Dto\Option; 
 use DateTimeImmutable; 
@@ -136,29 +137,8 @@ class PoneWineClientBalanceUpdateController extends Controller
                 $user->refresh();
             }
 
-            // Store complete provider data if available
-            Log::info('ClientSite: About to store provider data', [
-                'has_pone_wine_bet' => isset($validated['pone_wine_bet']),
-                'has_pone_wine_player_bets' => isset($validated['pone_wine_player_bets']),
-                'has_pone_wine_bet_infos' => isset($validated['pone_wine_bet_infos']),
-                'match_id' => $validated['matchId'],
-            ]);
-            $this->storeProviderData($validated);
-
-            // Store game match data (fallback for basic data)
-            $gameMatchData = [
-                'roomId' => $validated['roomId'],
-                'matchId' => $validated['matchId'],
-                'winNumber' => $validated['winNumber'],
-                'players' => $validated['players']
-            ];
-
-            $gameMatch = PoneWineBet::storeGameMatchData($gameMatchData);
-            Log::info('ClientSite: Game match data stored', [
-                'match_id' => $gameMatch->match_id,
-                'room_id' => $gameMatch->room_id,
-                'win_number' => $gameMatch->win_number
-            ]);
+            // Store complete transaction data in single table
+            $this->storeTransactionData($validated, $responseData);
             
 
             DB::commit();
@@ -184,221 +164,65 @@ class PoneWineClientBalanceUpdateController extends Controller
     }
 
     /**
-     * Store complete provider data from callback payload
+     * Store transaction data in single comprehensive table
      */
-    private function storeProviderData(array $validated): void
-    {
-        Log::info('ClientSite: Starting provider data storage', [
-            'match_id' => $validated['matchId'],
-            'available_keys' => array_keys($validated),
-        ]);
-
-        // Store provider's PoneWineBet data if available
-        if (isset($validated['pone_wine_bet']) && is_array($validated['pone_wine_bet'])) {
-            Log::info('ClientSite: Storing provider bet data');
-            $this->storeProviderBetData($validated['pone_wine_bet']);
-        } else {
-            Log::info('ClientSite: No pone_wine_bet data found');
-        }
-
-        // Store provider's PoneWinePlayerBet data if available
-        if (isset($validated['pone_wine_player_bets']) && is_array($validated['pone_wine_player_bets'])) {
-            Log::info('ClientSite: Storing provider player bets data');
-            $this->storeProviderPlayerBets($validated['pone_wine_player_bets'], $validated['matchId']);
-        } else {
-            Log::info('ClientSite: No pone_wine_player_bets data found');
-        }
-
-        // Store provider's PoneWineBetInfo data if available
-        if (isset($validated['pone_wine_bet_infos']) && is_array($validated['pone_wine_bet_infos'])) {
-            Log::info('ClientSite: Storing provider bet infos data');
-            $this->storeProviderBetInfos($validated['pone_wine_bet_infos']);
-        } else {
-            Log::info('ClientSite: No pone_wine_bet_infos data found');
-        }
-
-        Log::info('ClientSite: Provider data storage completed', [
-            'match_id' => $validated['matchId'],
-            'has_bet_data' => isset($validated['pone_wine_bet']),
-            'has_player_bets' => isset($validated['pone_wine_player_bets']),
-            'has_bet_infos' => isset($validated['pone_wine_bet_infos']),
-        ]);
-    }
-
-    /**
-     * Store provider's bet data
-     */
-    private function storeProviderBetData(array $betData): void
+    private function storeTransactionData(array $validated, array $responseData): void
     {
         try {
-            // Update existing bet or create new one with provider data
-            $bet = PoneWineBet::updateOrCreate(
-                ['match_id' => $betData['match_id']],
-                [
-                    'room_id' => $betData['room_id'],
-                    'win_number' => $betData['win_number'],
-                    'status' => $betData['status'] ?? 1,
-                ]
-            );
+            // Check for duplicate match_id to prevent double processing
+            if (PoneWineTransaction::where('match_id', $validated['matchId'])->exists()) {
+                Log::info('ClientSite: Transaction already exists, skipping storage', [
+                    'match_id' => $validated['matchId']
+                ]);
+                return;
+            }
 
-            Log::info('ClientSite: Provider bet data stored', [
-                'bet_id' => $bet->id,
-                'match_id' => $bet->match_id,
-                'room_id' => $bet->room_id,
+            $gameData = [
+                'roomId' => $validated['roomId'],
+                'matchId' => $validated['matchId'],
+                'winNumber' => $validated['winNumber'],
+            ];
+
+            // Store each player's transaction
+            foreach ($validated['players'] as $index => $playerData) {
+                $user = User::where('user_name', $playerData['player_id'])->first();
+                
+                if (!$user) {
+                    Log::warning('ClientSite: User not found for transaction storage', [
+                        'player_id' => $playerData['player_id']
+                    ]);
+                    continue;
+                }
+
+                // Get balance information from our response data
+                $balanceInfo = $responseData[$index] ?? null;
+                $balanceBefore = $user->wallet->balanceFloat - ($playerData['winLoseAmount'] ?? 0);
+                $balanceAfter = $balanceInfo['balance'] ?? $user->wallet->balanceFloat;
+
+                // Store each bet info as separate transaction record
+                foreach ($playerData['betInfos'] as $betInfo) {
+                    PoneWineTransaction::storeFromProviderPayload(
+                        $gameData,
+                        $playerData,
+                        $betInfo,
+                        $user,
+                        $balanceBefore,
+                        $balanceAfter
+                    );
+                }
+            }
+
+            Log::info('ClientSite: Transaction data stored successfully', [
+                'match_id' => $validated['matchId'],
+                'players_count' => count($validated['players']),
             ]);
+
         } catch (\Exception $e) {
-            Log::error('ClientSite: Failed to store provider bet data', [
+            Log::error('ClientSite: Failed to store transaction data', [
                 'error' => $e->getMessage(),
-                'bet_data' => $betData,
+                'match_id' => $validated['matchId'],
+                'trace' => $e->getTraceAsString(),
             ]);
-        }
-    }
-
-    /**
-     * Store provider's player bet data
-     */
-    private function storeProviderPlayerBets(array $playerBets, string $matchId): void
-    {
-        // First, find the corresponding client bet by match_id
-        $clientBet = PoneWineBet::where('match_id', $matchId)->first();
-
-        if (!$clientBet) {
-            Log::warning('ClientSite: No matching client bet found for provider player bets', [
-                'match_id' => $matchId,
-                'player_bets_count' => count($playerBets),
-            ]);
-            return;
-        }
-
-        foreach ($playerBets as $playerBetData) {
-            try {
-                // Check if this player bet already exists by user and bet combination
-                $existingPlayerBet = PoneWinePlayerBet::where('pone_wine_bet_id', $clientBet->id)
-                    ->where('user_id', $playerBetData['user_id'])
-                    ->first();
-
-                if ($existingPlayerBet) {
-                    // Update existing record
-                    $existingPlayerBet->update([
-                        'user_name' => $playerBetData['user_name'],
-                        'win_lose_amt' => $playerBetData['win_lose_amt'],
-                    ]);
-                    $playerBet = $existingPlayerBet;
-                } else {
-                    // Create new record using our client bet ID
-                    $playerBet = PoneWinePlayerBet::create([
-                        'pone_wine_bet_id' => $clientBet->id, // Use our client bet ID, not provider's
-                        'user_id' => $playerBetData['user_id'],
-                        'user_name' => $playerBetData['user_name'],
-                        'win_lose_amt' => $playerBetData['win_lose_amt'],
-                    ]);
-                }
-
-                // Store nested bet infos if available
-                if (isset($playerBetData['bet_infos']) && is_array($playerBetData['bet_infos'])) {
-                    $this->storeProviderPlayerBetInfos($playerBet->id, $playerBetData['bet_infos']);
-                }
-
-                Log::info('ClientSite: Provider player bet stored', [
-                    'player_bet_id' => $playerBet->id,
-                    'client_bet_id' => $clientBet->id,
-                    'provider_bet_id' => $playerBetData['pone_wine_bet_id'],
-                    'user_name' => $playerBet->user_name,
-                    'win_lose_amt' => $playerBet->win_lose_amt,
-                    'match_id' => $matchId,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('ClientSite: Failed to store provider player bet', [
-                    'error' => $e->getMessage(),
-                    'player_bet_data' => $playerBetData,
-                    'match_id' => $matchId,
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Store provider's bet infos data
-     */
-    private function storeProviderBetInfos(array $betInfos): void
-    {
-        foreach ($betInfos as $betInfoData) {
-            try {
-                // Check if this bet info already exists
-                $existingBetInfo = PoneWineBetInfo::where('pone_wine_player_bet_id', $betInfoData['pone_wine_player_bet_id'])
-                    ->where('bet_no', $betInfoData['bet_no'])
-                    ->first();
-
-                if ($existingBetInfo) {
-                    // Update existing record
-                    $existingBetInfo->update([
-                        'bet_amount' => $betInfoData['bet_amount'],
-                    ]);
-                    $betInfo = $existingBetInfo;
-                } else {
-                    // Create new record (let database assign new ID)
-                    $betInfo = PoneWineBetInfo::create([
-                        'bet_no' => $betInfoData['bet_no'],
-                        'bet_amount' => $betInfoData['bet_amount'],
-                        'pone_wine_player_bet_id' => $betInfoData['pone_wine_player_bet_id'],
-                    ]);
-                }
-
-                Log::info('ClientSite: Provider bet info stored', [
-                    'bet_info_id' => $betInfo->id,
-                    'bet_no' => $betInfo->bet_no,
-                    'bet_amount' => $betInfo->bet_amount,
-                    'provider_id' => $betInfoData['id'] ?? 'N/A',
-                ]);
-            } catch (\Exception $e) {
-                Log::error('ClientSite: Failed to store provider bet info', [
-                    'error' => $e->getMessage(),
-                    'bet_info_data' => $betInfoData,
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Store provider's player bet infos (nested data)
-     */
-    private function storeProviderPlayerBetInfos(int $playerBetId, array $betInfos): void
-    {
-        foreach ($betInfos as $betInfoData) {
-            try {
-                // Check if this bet info already exists
-                $existingBetInfo = PoneWineBetInfo::where('pone_wine_player_bet_id', $playerBetId)
-                    ->where('bet_no', $betInfoData['bet_no'])
-                    ->first();
-
-                if ($existingBetInfo) {
-                    // Update existing record
-                    $existingBetInfo->update([
-                        'bet_amount' => $betInfoData['bet_amount'],
-                    ]);
-                    $betInfo = $existingBetInfo;
-                } else {
-                    // Create new record (let database assign new ID)
-                    $betInfo = PoneWineBetInfo::create([
-                        'bet_no' => $betInfoData['bet_no'],
-                        'bet_amount' => $betInfoData['bet_amount'],
-                        'pone_wine_player_bet_id' => $playerBetId,
-                    ]);
-                }
-
-                Log::info('ClientSite: Provider nested bet info stored', [
-                    'bet_info_id' => $betInfo->id,
-                    'player_bet_id' => $playerBetId,
-                    'bet_no' => $betInfo->bet_no,
-                    'provider_id' => $betInfoData['id'] ?? 'N/A',
-                ]);
-            } catch (\Exception $e) {
-                Log::error('ClientSite: Failed to store provider nested bet info', [
-                    'error' => $e->getMessage(),
-                    'player_bet_id' => $playerBetId,
-                    'bet_info_data' => $betInfoData,
-                ]);
-            }
         }
     }
 }
