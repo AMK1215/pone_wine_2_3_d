@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.master')
 
 @section('title', 'PoneWine Agent Report - ' . ($agent->user_name ?? 'Unknown Agent'))
 
