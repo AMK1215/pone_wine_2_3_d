@@ -10,6 +10,9 @@
                 <div class="card-header">
                     <h3 class="card-title">
                         <i class="fas fa-dice mr-2"></i>PoneWine Game Report
+                        <small class="text-muted ml-2">
+                            <i class="fas fa-filter mr-1"></i>Showing non-direct wins only
+                        </small>
                     </h3>
                     <div class="card-tools">
                         <button type="button" class="btn btn-success btn-sm" onclick="exportToCsv()">

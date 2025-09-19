@@ -20,6 +20,9 @@ class PoneWineReportController extends Controller
         $user = Auth::user();
         $query = PoneWineTransaction::forUser($user);
 
+        // Filter out direct wins (bet_number = win_number) to show only complex game logic
+        $query->whereColumn('bet_number', '!=', 'win_number');
+
         // Apply filters
         $query = $this->applyFilters($query, $request);
 
@@ -59,6 +62,9 @@ class PoneWineReportController extends Controller
 
         $query = PoneWineTransaction::forUser($user)
             ->where('player_agent_id', $agentId);
+
+        // Filter out direct wins (bet_number = win_number) to show only complex game logic
+        $query->whereColumn('bet_number', '!=', 'win_number');
 
         // Apply filters
         $query = $this->applyFilters($query, $request);
@@ -100,6 +106,10 @@ class PoneWineReportController extends Controller
     private function calculateOverallTotals($user, Request $request)
     {
         $query = PoneWineTransaction::forUser($user);
+        
+        // Filter out direct wins (bet_number = win_number) to show only complex game logic
+        $query->whereColumn('bet_number', '!=', 'win_number');
+        
         $query = $this->applyFilters($query, $request);
         
         $totals = $query->select([
@@ -122,6 +132,10 @@ class PoneWineReportController extends Controller
     private function calculateAgentTotals($agentId, Request $request)
     {
         $query = PoneWineTransaction::where('player_agent_id', $agentId);
+        
+        // Filter out direct wins (bet_number = win_number) to show only complex game logic
+        $query->whereColumn('bet_number', '!=', 'win_number');
+        
         $query = $this->applyFilters($query, $request);
         
         $totals = $query->select([
@@ -149,6 +163,9 @@ class PoneWineReportController extends Controller
         $this->checkPlayerAccess($user, $player);
 
         $query = PoneWineTransaction::where('user_id', $playerId);
+
+        // Filter out direct wins (bet_number = win_number) to show only complex game logic
+        $query->whereColumn('bet_number', '!=', 'win_number');
         $query = $this->applyFilters($query, $request);
 
         $playerReports = $query->orderByDesc('created_at')->paginate(20);
@@ -248,6 +265,10 @@ class PoneWineReportController extends Controller
     {
         $user = Auth::user();
         $query = PoneWineTransaction::forUser($user);
+        
+        // Filter out direct wins (bet_number = win_number) to show only complex game logic
+        $query->whereColumn('bet_number', '!=', 'win_number');
+        
         $query = $this->applyFilters($query, $request);
 
         $reports = $query->orderByDesc('created_at')->get();
