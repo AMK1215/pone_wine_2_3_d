@@ -22,40 +22,48 @@
                 <div class="card-body">
                     <form method="GET" action="{{ route('admin.ponewine.report.index') }}" class="mb-4">
                         <div class="row">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="date_from">Date From:</label>
                                     <input type="date" name="date_from" id="date_from" class="form-control" 
-                                           value="{{ request('date_from', now()->subDays(30)->format('Y-m-d')) }}">
+                                           value="{{ request('date_from') }}" placeholder="Optional">
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="date_to">Date To:</label>
                                     <input type="date" name="date_to" id="date_to" class="form-control" 
-                                           value="{{ request('date_to', now()->format('Y-m-d')) }}">
+                                           value="{{ request('date_to') }}" placeholder="Optional">
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label for="player_name">Player Name:</label>
                                     <input type="text" name="player_name" id="player_name" class="form-control" 
-                                           value="{{ request('player_name') }}" placeholder="Search player...">
+                                           value="{{ request('player_name') }}" placeholder="Search player (optional)...">
                                 </div>
                             </div>
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="room_id">Room ID:</label>
                                     <input type="number" name="room_id" id="room_id" class="form-control" 
-                                           value="{{ request('room_id') }}" placeholder="Room ID">
+                                           value="{{ request('room_id') }}" placeholder="Room ID (optional)">
                                 </div>
                             </div>
                             <div class="col-md-1">
                                 <div class="form-group">
                                     <label>&nbsp;</label>
-                                    <button type="submit" class="btn btn-primary form-control">
+                                    <button type="submit" class="btn btn-primary form-control" title="Search">
                                         <i class="fas fa-search"></i>
                                     </button>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <a href="{{ route('admin.ponewine.report.index') }}" class="btn btn-secondary form-control" title="Clear all filters">
+                                        <i class="fas fa-times"></i> Clear
+                                    </a>
                                 </div>
                             </div>
                         </div>
