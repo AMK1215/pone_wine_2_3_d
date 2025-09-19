@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\TwoD\TwoDigitController;
 use App\Http\Controllers\Admin\WagerListController;
 use App\Http\Controllers\Admin\WinnerTextController;
 use App\Http\Controllers\Admin\WithDrawRequestController;
+use App\Http\Controllers\Admin\PoneWine\PoneWineReportController;
 use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 
@@ -281,4 +282,11 @@ Route::group([
     Route::get('/shan-report-transactions', [ShanReportTransactionController::class, 'index'])->name('shan.report.transactions');
     Route::post('/shan-report-transactions/fetch', [ShanReportTransactionController::class, 'fetchReportTransactions'])->name('shan.report.transactions.fetch');
     Route::post('/shan-report-transactions/member', [ShanReportTransactionController::class, 'fetchMemberTransactions'])->name('shan.report.transactions.member');
+    
+    // PoneWine reports
+    Route::group(['prefix' => 'ponewine'], function () {
+        Route::get('/report', [PoneWineReportController::class, 'index'])->name('ponewine.report.index');
+        Route::get('/report/player/{playerId}', [PoneWineReportController::class, 'playerDetail'])->name('ponewine.report.player.detail');
+        Route::get('/report/export', [PoneWineReportController::class, 'exportCsv'])->name('ponewine.report.export');
+    });
 });

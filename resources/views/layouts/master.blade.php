@@ -526,16 +526,16 @@
                                         </p>
                                     </a>
                                 </li> -->
-                                @can('agent_access')
-                                <!-- <li class="nav-item">
-                            <a href="{{ route('admin.player_report.summary') }}"
-                                class="nav-link {{ Route::currentRouteName() == 'admin.player_report.summary' ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-chart-line"></i>
+                        @can('agent_access')
+                        <li class="nav-item">
+                            <a href="{{ route('admin.ponewine.report.index') }}"
+                                class="nav-link {{ Route::current()->getName() == 'admin.ponewine.report.index' ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-dice"></i>
                                 <p>
-                                    Win/Lose Report
+                                    PoneWine Report
                                 </p>
                             </a>
-                        </li> -->
+                        </li>
                         @endcan
                                 @can('owner_access')
                                 <!-- <li class="nav-item menu-open">
@@ -549,35 +549,28 @@
                                 </li> -->
                                 @endcan
 
-                                @can('player_view')
-                                <!-- <li class="nav-item">
-                            <a href="{{ route('admin.player_report.summary') }}"
-                                class="nav-link {{ Route::currentRouteName() == 'admin.player_report.summary' ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-chart-line"></i>
+                        @can('player_view')
+                        <li class="nav-item">
+                            <a href="{{ route('admin.ponewine.report.index') }}"
+                                class="nav-link {{ Route::current()->getName() == 'admin.ponewine.report.index' ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-dice"></i>
                                 <p>
-                                    Win/Lose Report
+                                    PoneWine Report
                                 </p>
                             </a>
-                        </li> -->
+                        </li>
                         @endcan
-                                <!-- <li class="nav-item menu-open">
-                                    <a href=""
-                                        class="nav-link">
+                                @can('view_player_report')
+                                <li class="nav-item">
+                                    <a href="{{ route('admin.ponewine.report.index') }}"
+                                        class="nav-link {{ Route::current()->getName() == 'admin.ponewine.report.index' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>
                                             PoneWine Report
                                         </p>
                                     </a>
                                 </li>
-                                <li class="nav-item menu-open">
-                                    <a href=""
-                                        class="nav-link">
-                                        <i class="far fa-circle nav-icon"></i>
-                                        <p>
-                                           Shan Report
-                                        </p>
-                                    </a>
-                                </li> -->
+                                @endcan
                                 <!-- <li class="nav-item">
                                     <a href=""
                                         class="nav-link">
@@ -607,10 +600,15 @@
                                         <i class="fas fa-angle-left right"></i>
                                     </p>
                                 </a>
-                                <!-- <ul class="nav nav-treeview">
-
-
+                                <ul class="nav nav-treeview">
                                         <li class="nav-item">
+                                                <a href="{{ route('admin.ponewine.report.index') }}"
+                                                class="nav-link {{ Route::current()->getName() == 'admin.ponewine.report.index' ? 'active' : '' }}">
+                                                <i class="far fa-circle nav-icon"></i>
+                                                <p>PoneWine Report</p>
+                                            </a>
+                                        </li>
+                                        <!-- <li class="nav-item">
                                                 <a href="{{ route('admin.shan.player.report') }}"
                                                 class="nav-link {{ Route::current()->getName() == 'admin.shan.player.report' ? 'active' : '' }}">
                                                 <i class="far fa-circle nav-icon"></i>
@@ -623,10 +621,8 @@
                                                 <i class="far fa-circle nav-icon"></i>
                                                 <p>Shan Report Transactions</p>
                                             </a>
-                                        </li>
-
-
-                                </ul> -->
+                                        </li> -->
+                                </ul>
                             </li> 
                                 @endcan
                             </ul>
