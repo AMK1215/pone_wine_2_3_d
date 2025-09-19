@@ -50,6 +50,8 @@ return new class extends Migration
             // Metadata
             $table->json('provider_payload')->nullable(); // Store complete provider payload for reference
             $table->text('notes')->nullable();
+            $table->unsignedBigInteger('player_agent_id')->nullable();
+            $table->string('player_agent_name')->nullable();
             
             $table->timestamps();
             
@@ -66,6 +68,8 @@ return new class extends Migration
             
             // Foreign key constraint
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('player_agent_id')->references('id')->on('users')->onDelete('cascade');
+            
         });
     }
 

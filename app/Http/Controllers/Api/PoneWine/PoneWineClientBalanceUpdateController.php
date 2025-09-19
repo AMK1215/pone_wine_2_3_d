@@ -76,6 +76,7 @@ class PoneWineClientBalanceUpdateController extends Controller
 
             foreach ($validated['players'] as $playerData) {
                 $user = User::where('user_name', $playerData['player_id'])->first();
+                
 
                 if (!$user) {
                     Log::error('ClientSite: Player not found for balance update. Rolling back transaction.', [
@@ -178,6 +179,8 @@ class PoneWineClientBalanceUpdateController extends Controller
             // Store each player's transaction
             foreach ($validated['players'] as $index => $playerData) {
                 $user = User::where('user_name', $playerData['player_id'])->first();
+                $player_agent_id = $user->agent_id;
+                $player_agent_name = $user->agent->user_name;
                 
                 if (!$user) {
                     Log::warning('ClientSite: User not found for transaction storage', [
@@ -215,7 +218,9 @@ class PoneWineClientBalanceUpdateController extends Controller
                             $betInfo,
                             $user,
                             $balanceBefore,
-                            $balanceAfter
+                            $balanceAfter,
+                            $player_agent_id,
+                            $player_agent_name
                         );
 
                         Log::info('ClientSite: Transaction stored', [
