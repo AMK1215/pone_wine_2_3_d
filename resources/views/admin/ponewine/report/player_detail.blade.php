@@ -122,15 +122,17 @@
                         <table class="table table-bordered table-striped table-hover">
                             <thead class="thead-dark">
                                 <tr>
-                                    <th width="5%">No</th>
-                                    <th width="10%">Game ID</th>
-                                    <th width="10%">Room ID</th>
-                                    <th width="15%">Match ID</th>
-                                    <th width="10%">Win Number</th>
-                                    <th width="10%">Bet Number</th>
-                                    <th width="12%">Bet Amount</th>
-                                    <th width="12%">Win/Lose Amount</th>
+                                    <th width="4%">No</th>
+                                    <th width="8%">ID</th>
+                                    <th width="8%">Room ID</th>
+                                    <th width="12%">Match ID</th>
+                                    <th width="8%">Win Number</th>
+                                    <th width="8%">Bet Number</th>
+                                    <th width="10%">Bet Amount</th>
+                                    <th width="10%">Win/Lose</th>
                                     <th width="8%">Result</th>
+                                    <th width="10%">Balance Before</th>
+                                    <th width="10%">Balance After</th>
                                     <th width="8%">Game Date</th>
                                 </tr>
                             </thead>
@@ -139,7 +141,7 @@
                                     <tr>
                                         <td>{{ ($playerReports->currentPage() - 1) * $playerReports->perPage() + $index + 1 }}</td>
                                         <td>
-                                            <span class="badge badge-secondary">{{ $report->game_id }}</span>
+                                            <span class="badge badge-secondary">{{ $report->id }}</span>
                                         </td>
                                         <td>
                                             <span class="badge badge-info">{{ $report->room_id }}</span>
@@ -151,14 +153,14 @@
                                             <span class="badge badge-primary">{{ $report->win_number }}</span>
                                         </td>
                                         <td>
-                                            <span class="badge badge-warning">{{ $report->bet_no }}</span>
+                                            <span class="badge badge-warning">{{ $report->bet_number }}</span>
                                         </td>
                                         <td class="text-right">
                                             <strong>{{ number_format($report->bet_amount, 2) }}</strong>
                                         </td>
                                         <td class="text-right">
-                                            <span class="font-weight-bold {{ $report->win_lose_amt >= 0 ? 'text-success' : 'text-danger' }}">
-                                                {{ $report->win_lose_amt >= 0 ? '+' : '' }}{{ number_format($report->win_lose_amt, 2) }}
+                                            <span class="font-weight-bold {{ $report->win_lose_amount >= 0 ? 'text-success' : 'text-danger' }}">
+                                                {{ $report->win_lose_amount >= 0 ? '+' : '' }}{{ number_format($report->win_lose_amount, 2) }}
                                             </span>
                                         </td>
                                         <td>
@@ -170,13 +172,19 @@
                                                 <span class="badge badge-secondary">{{ $report->result }}</span>
                                             @endif
                                         </td>
+                                        <td class="text-right">
+                                            <small>{{ number_format($report->player_balance_before, 2) }}</small>
+                                        </td>
+                                        <td class="text-right">
+                                            <small>{{ number_format($report->player_balance_after, 2) }}</small>
+                                        </td>
                                         <td>
-                                            <small>{{ \Carbon\Carbon::parse($report->game_date)->format('M d, Y H:i') }}</small>
+                                            <small>{{ \Carbon\Carbon::parse($report->created_at)->format('M d, Y H:i') }}</small>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="10" class="text-center text-muted py-4">
+                                        <td colspan="12" class="text-center text-muted py-4">
                                             <i class="fas fa-inbox fa-2x mb-2"></i><br>
                                             No game history found for this player.
                                         </td>
