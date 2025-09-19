@@ -169,14 +169,6 @@ class PoneWineClientBalanceUpdateController extends Controller
     private function storeTransactionData(array $validated, array $responseData): void
     {
         try {
-            // Check for duplicate match_id to prevent double processing
-            if (PoneWineTransaction::where('match_id', $validated['matchId'])->exists()) {
-                Log::info('ClientSite: Transaction already exists, skipping storage', [
-                    'match_id' => $validated['matchId']
-                ]);
-                return;
-            }
-
             $gameData = [
                 'roomId' => $validated['roomId'],
                 'matchId' => $validated['matchId'],
@@ -201,18 +193,50 @@ class PoneWineClientBalanceUpdateController extends Controller
 
                 // Store each bet info as separate transaction record
                 foreach ($playerData['betInfos'] as $betInfo) {
-                    PoneWineTransaction::storeFromProviderPayload(
-                        $gameData,
-                        $playerData,
-                        $betInfo,
-                        $user,
-                        $balanceBefore,
-                        $balanceAfter
-                    );
+                    try {
+                        // Check if this specific transaction already exists
+                        $existingTransaction = PoneWineTransaction::where('match_id', $validated['matchId'])
+                            ->where('user_id', $user->id)
+                            ->where('bet_number', $betInfo['betNumber'])
+                            ->first();
+
+                        if ($existingTransaction) {
+                            Log::info('ClientSite: Transaction already exists, skipping', [
+                                'match_id' => $validated['matchId'],
+                                'user_id' => $user->id,
+                                'bet_number' => $betInfo['betNumber']
+                            ]);
+                            continue;
+                        }
+
+                        PoneWineTransaction::storeFromProviderPayload(
+                            $gameData,
+                            $playerData,
+                            $betInfo,
+                            $user,
+                            $balanceBefore,
+                            $balanceAfter
+                        );
+
+                        Log::info('ClientSite: Transaction stored', [
+                            'match_id' => $validated['matchId'],
+                            'user_name' => $user->user_name,
+                            'bet_number' => $betInfo['betNumber'],
+                            'bet_amount' => $betInfo['betAmount'],
+                        ]);
+
+                    } catch (\Exception $e) {
+                        Log::error('ClientSite: Failed to store individual transaction', [
+                            'error' => $e->getMessage(),
+                            'match_id' => $validated['matchId'],
+                            'user_name' => $user->user_name,
+                            'bet_number' => $betInfo['betNumber'] ?? 'unknown',
+                        ]);
+                    }
                 }
             }
 
-            Log::info('ClientSite: Transaction data stored successfully', [
+            Log::info('ClientSite: Transaction data storage completed', [
                 'match_id' => $validated['matchId'],
                 'players_count' => count($validated['players']),
             ]);

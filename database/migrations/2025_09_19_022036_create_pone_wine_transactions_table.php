@@ -16,7 +16,7 @@ return new class extends Migration
             
             // Game Information
             $table->integer('room_id');
-            $table->string('match_id')->unique();
+            $table->string('match_id'); // Remove unique constraint since multiple bets per match
             $table->integer('win_number');
             
             // Player Information
@@ -60,6 +60,9 @@ return new class extends Migration
             $table->index(['player_id', 'created_at']);
             $table->index(['result', 'created_at']);
             $table->index(['bet_number', 'room_id']);
+            
+            // Unique constraint to prevent duplicate transactions
+            $table->unique(['match_id', 'user_id', 'bet_number'], 'unique_transaction');
             
             // Foreign key constraint
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
