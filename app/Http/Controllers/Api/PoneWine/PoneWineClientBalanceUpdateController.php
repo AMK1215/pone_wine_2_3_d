@@ -204,7 +204,7 @@ class PoneWineClientBalanceUpdateController extends Controller
         // Store provider's PoneWinePlayerBet data if available
         if (isset($validated['pone_wine_player_bets']) && is_array($validated['pone_wine_player_bets'])) {
             Log::info('ClientSite: Storing provider player bets data');
-            $this->storeProviderPlayerBets($validated['pone_wine_player_bets']);
+            $this->storeProviderPlayerBets($validated['pone_wine_player_bets'], $validated['matchId']);
         } else {
             Log::info('ClientSite: No pone_wine_player_bets data found');
         }
@@ -257,12 +257,23 @@ class PoneWineClientBalanceUpdateController extends Controller
     /**
      * Store provider's player bet data
      */
-    private function storeProviderPlayerBets(array $playerBets): void
+    private function storeProviderPlayerBets(array $playerBets, string $matchId): void
     {
+        // First, find the corresponding client bet by match_id
+        $clientBet = PoneWineBet::where('match_id', $matchId)->first();
+
+        if (!$clientBet) {
+            Log::warning('ClientSite: No matching client bet found for provider player bets', [
+                'match_id' => $matchId,
+                'player_bets_count' => count($playerBets),
+            ]);
+            return;
+        }
+
         foreach ($playerBets as $playerBetData) {
             try {
                 // Check if this player bet already exists by user and bet combination
-                $existingPlayerBet = PoneWinePlayerBet::where('pone_wine_bet_id', $playerBetData['pone_wine_bet_id'])
+                $existingPlayerBet = PoneWinePlayerBet::where('pone_wine_bet_id', $clientBet->id)
                     ->where('user_id', $playerBetData['user_id'])
                     ->first();
 
@@ -274,9 +285,9 @@ class PoneWineClientBalanceUpdateController extends Controller
                     ]);
                     $playerBet = $existingPlayerBet;
                 } else {
-                    // Create new record (let database assign new ID)
+                    // Create new record using our client bet ID
                     $playerBet = PoneWinePlayerBet::create([
-                        'pone_wine_bet_id' => $playerBetData['pone_wine_bet_id'],
+                        'pone_wine_bet_id' => $clientBet->id, // Use our client bet ID, not provider's
                         'user_id' => $playerBetData['user_id'],
                         'user_name' => $playerBetData['user_name'],
                         'win_lose_amt' => $playerBetData['win_lose_amt'],
@@ -290,14 +301,17 @@ class PoneWineClientBalanceUpdateController extends Controller
 
                 Log::info('ClientSite: Provider player bet stored', [
                     'player_bet_id' => $playerBet->id,
+                    'client_bet_id' => $clientBet->id,
+                    'provider_bet_id' => $playerBetData['pone_wine_bet_id'],
                     'user_name' => $playerBet->user_name,
                     'win_lose_amt' => $playerBet->win_lose_amt,
-                    'provider_id' => $playerBetData['id'] ?? 'N/A',
+                    'match_id' => $matchId,
                 ]);
             } catch (\Exception $e) {
                 Log::error('ClientSite: Failed to store provider player bet', [
                     'error' => $e->getMessage(),
                     'player_bet_data' => $playerBetData,
+                    'match_id' => $matchId,
                 ]);
             }
         }
