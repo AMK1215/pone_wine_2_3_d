@@ -37,14 +37,6 @@ class PoneWineClientBalanceUpdateController extends Controller
                 'players.*.betInfos' => 'required|array',
                 'players.*.betInfos.*.betNumber' => 'required|integer',
                 'players.*.betInfos.*.betAmount' => 'required|numeric|min:0',
-                'players.*.client_agent_name' => 'nullable|string',
-                'players.*.client_agent_id' => 'nullable|string',
-                'players.*.pone_wine_player_bet' => 'nullable|array',
-                'players.*.pone_wine_bet_infos' => 'nullable|array',
-                // Provider database model information
-                'pone_wine_bet' => 'nullable|array',
-                'pone_wine_player_bets' => 'nullable|array',
-                'pone_wine_bet_infos' => 'nullable|array',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('ClientSite: BalanceUpdateCallback validation failed', [
@@ -136,10 +128,7 @@ class PoneWineClientBalanceUpdateController extends Controller
                 $user->refresh();
             }
 
-            // Store complete provider data if available
-            $this->storeProviderData($validated);
-
-            // Store game match data (fallback for basic data)
+            // Store game match data
             $gameMatchData = [
                 'roomId' => $validated['roomId'],
                 'matchId' => $validated['matchId'],
@@ -174,163 +163,6 @@ class PoneWineClientBalanceUpdateController extends Controller
             return response()->json([
                 'status' => 'error', 'code' => 'INTERNAL_SERVER_ERROR', 'message' => 'Internal server error: ' . $e->getMessage(),
             ], 500);
-        }
-    }
-
-    /**
-     * Store complete provider data from callback payload
-     */
-    private function storeProviderData(array $validated): void
-    {
-        // Store provider's PoneWineBet data if available
-        if (isset($validated['pone_wine_bet']) && is_array($validated['pone_wine_bet'])) {
-            $this->storeProviderBetData($validated['pone_wine_bet']);
-        }
-
-        // Store provider's PoneWinePlayerBet data if available
-        if (isset($validated['pone_wine_player_bets']) && is_array($validated['pone_wine_player_bets'])) {
-            $this->storeProviderPlayerBets($validated['pone_wine_player_bets']);
-        }
-
-        // Store provider's PoneWineBetInfo data if available
-        if (isset($validated['pone_wine_bet_infos']) && is_array($validated['pone_wine_bet_infos'])) {
-            $this->storeProviderBetInfos($validated['pone_wine_bet_infos']);
-        }
-
-        Log::info('ClientSite: Provider data storage completed', [
-            'match_id' => $validated['matchId'],
-            'has_bet_data' => isset($validated['pone_wine_bet']),
-            'has_player_bets' => isset($validated['pone_wine_player_bets']),
-            'has_bet_infos' => isset($validated['pone_wine_bet_infos']),
-        ]);
-    }
-
-    /**
-     * Store provider's bet data
-     */
-    private function storeProviderBetData(array $betData): void
-    {
-        try {
-            // Update existing bet or create new one with provider data
-            $bet = PoneWineBet::updateOrCreate(
-                ['match_id' => $betData['match_id']],
-                [
-                    'room_id' => $betData['room_id'],
-                    'win_number' => $betData['win_number'],
-                    'status' => $betData['status'] ?? 1,
-                ]
-            );
-
-            Log::info('ClientSite: Provider bet data stored', [
-                'bet_id' => $bet->id,
-                'match_id' => $bet->match_id,
-                'room_id' => $bet->room_id,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('ClientSite: Failed to store provider bet data', [
-                'error' => $e->getMessage(),
-                'bet_data' => $betData,
-            ]);
-        }
-    }
-
-    /**
-     * Store provider's player bet data
-     */
-    private function storeProviderPlayerBets(array $playerBets): void
-    {
-        foreach ($playerBets as $playerBetData) {
-            try {
-                // Update existing player bet or create new one with provider data
-                $playerBet = PoneWinePlayerBet::updateOrCreate(
-                    ['id' => $playerBetData['id']],
-                    [
-                        'pone_wine_bet_id' => $playerBetData['pone_wine_bet_id'],
-                        'user_id' => $playerBetData['user_id'],
-                        'user_name' => $playerBetData['user_name'],
-                        'win_lose_amt' => $playerBetData['win_lose_amt'],
-                    ]
-                );
-
-                // Store nested bet infos if available
-                if (isset($playerBetData['bet_infos']) && is_array($playerBetData['bet_infos'])) {
-                    $this->storeProviderPlayerBetInfos($playerBet->id, $playerBetData['bet_infos']);
-                }
-
-                Log::info('ClientSite: Provider player bet stored', [
-                    'player_bet_id' => $playerBet->id,
-                    'user_name' => $playerBet->user_name,
-                    'win_lose_amt' => $playerBet->win_lose_amt,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('ClientSite: Failed to store provider player bet', [
-                    'error' => $e->getMessage(),
-                    'player_bet_data' => $playerBetData,
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Store provider's bet infos data
-     */
-    private function storeProviderBetInfos(array $betInfos): void
-    {
-        foreach ($betInfos as $betInfoData) {
-            try {
-                // Update existing bet info or create new one with provider data
-                $betInfo = PoneWineBetInfo::updateOrCreate(
-                    ['id' => $betInfoData['id']],
-                    [
-                        'bet_no' => $betInfoData['bet_no'],
-                        'bet_amount' => $betInfoData['bet_amount'],
-                        'pone_wine_player_bet_id' => $betInfoData['pone_wine_player_bet_id'],
-                    ]
-                );
-
-                Log::info('ClientSite: Provider bet info stored', [
-                    'bet_info_id' => $betInfo->id,
-                    'bet_no' => $betInfo->bet_no,
-                    'bet_amount' => $betInfo->bet_amount,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('ClientSite: Failed to store provider bet info', [
-                    'error' => $e->getMessage(),
-                    'bet_info_data' => $betInfoData,
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Store provider's player bet infos (nested data)
-     */
-    private function storeProviderPlayerBetInfos(int $playerBetId, array $betInfos): void
-    {
-        foreach ($betInfos as $betInfoData) {
-            try {
-                // Update existing bet info or create new one with provider data
-                $betInfo = PoneWineBetInfo::updateOrCreate(
-                    ['id' => $betInfoData['id']],
-                    [
-                        'bet_no' => $betInfoData['bet_no'],
-                        'bet_amount' => $betInfoData['bet_amount'],
-                        'pone_wine_player_bet_id' => $playerBetId,
-                    ]
-                );
-
-                Log::info('ClientSite: Provider nested bet info stored', [
-                    'bet_info_id' => $betInfo->id,
-                    'player_bet_id' => $playerBetId,
-                    'bet_no' => $betInfo->bet_no,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('ClientSite: Failed to store provider nested bet info', [
-                    'error' => $e->getMessage(),
-                    'player_bet_id' => $playerBetId,
-                    'bet_info_data' => $betInfoData,
-                ]);
-            }
         }
     }
 }
