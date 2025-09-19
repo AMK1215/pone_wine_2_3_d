@@ -31,8 +31,8 @@ class PoneWineReportController extends Controller
             DB::raw('COUNT(DISTINCT user_id) as total_players'),
             DB::raw('COUNT(*) as total_bets'),
             DB::raw('SUM(bet_amount) as total_bet_amount'),
-            DB::raw('SUM(CASE WHEN result = "Win" THEN win_lose_amount ELSE 0 END) as total_wins'),
-            DB::raw('SUM(CASE WHEN result = "Lose" THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
+            DB::raw('SUM(CASE WHEN result = \'Win\' THEN win_lose_amount ELSE 0 END) as total_wins'),
+            DB::raw('SUM(CASE WHEN result = \'Lose\' THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
             DB::raw('SUM(win_lose_amount) as net_result'),
             DB::raw('MAX(created_at) as last_game_date'),
         ])
@@ -108,8 +108,8 @@ class PoneWineReportController extends Controller
             DB::raw('COUNT(DISTINCT player_agent_id) as total_agents'),
             DB::raw('COUNT(*) as total_bets'),
             DB::raw('SUM(bet_amount) as total_bet_amount'),
-            DB::raw('SUM(CASE WHEN result = "Win" THEN win_lose_amount ELSE 0 END) as total_wins'),
-            DB::raw('SUM(CASE WHEN result = "Lose" THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
+            DB::raw('SUM(CASE WHEN result = \'Win\' THEN win_lose_amount ELSE 0 END) as total_wins'),
+            DB::raw('SUM(CASE WHEN result = \'Lose\' THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
             DB::raw('SUM(win_lose_amount) as net_result')
         ])->first();
 
@@ -129,8 +129,8 @@ class PoneWineReportController extends Controller
             DB::raw('COUNT(DISTINCT user_id) as total_players'),
             DB::raw('COUNT(*) as total_bets'),
             DB::raw('SUM(bet_amount) as total_bet_amount'),
-            DB::raw('SUM(CASE WHEN result = "Win" THEN win_lose_amount ELSE 0 END) as total_wins'),
-            DB::raw('SUM(CASE WHEN result = "Lose" THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
+            DB::raw('SUM(CASE WHEN result = \'Win\' THEN win_lose_amount ELSE 0 END) as total_wins'),
+            DB::raw('SUM(CASE WHEN result = \'Lose\' THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
             DB::raw('SUM(win_lose_amount) as net_result')
         ])->first();
 
@@ -158,8 +158,8 @@ class PoneWineReportController extends Controller
             DB::raw('COUNT(DISTINCT match_id) as total_games'),
             DB::raw('COUNT(*) as total_bets'),
             DB::raw('SUM(bet_amount) as total_bet_amount'),
-            DB::raw('SUM(CASE WHEN result = "Win" THEN win_lose_amount ELSE 0 END) as total_wins'),
-            DB::raw('SUM(CASE WHEN result = "Lose" THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
+            DB::raw('SUM(CASE WHEN result = \'Win\' THEN win_lose_amount ELSE 0 END) as total_wins'),
+            DB::raw('SUM(CASE WHEN result = \'Lose\' THEN ABS(win_lose_amount) ELSE 0 END) as total_losses'),
             DB::raw('SUM(win_lose_amount) as net_result')
         ])->first();
 

@@ -64,7 +64,7 @@ return new class extends Migration
             $table->index(['bet_number', 'room_id']);
             
             // Unique constraint to prevent duplicate transactions
-            $table->unique(['match_id', 'user_id', 'bet_number'], 'unique_transaction');
+            $table->unique(['match_id', 'user_id'], 'unique_transaction');
             
             // Foreign key constraint
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
