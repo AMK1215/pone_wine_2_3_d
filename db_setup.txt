@@ -1,19 +1,19 @@
 sudo apt install postgresql postgresql-contrib -y
 sudo systemctl status postgresql
-CREATE DATABASE mk_db;
-CREATE USER mk_db_user WITH PASSWORD 'mkmillion';
-GRANT ALL PRIVILEGES ON DATABASE mk_db TO mk_db_user;
-ALTER USER mk_db_user WITH PASSWORD 'mkmillion';
+CREATE DATABASE ponewine_db;
+CREATE USER ponewine_db_user WITH PASSWORD 'ponewinemillion';
+GRANT ALL PRIVILEGES ON DATABASE ponewine_db TO ponewine_db_user;
+ALTER USER ponewine_db_user WITH PASSWORD 'ponewinemillion';
 
 sudo -i -u postgres
-psql -d mk_db
+psql -d ponewine_db
 
-psql -h 127.0.0.1 -U mk_db_user -d mk_db
+psql -h 127.0.0.1 -U ponewine_db_user -d ponewine_db
 
-GRANT ALL ON SCHEMA public TO mk_db_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO mk_db_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO mk_db_user;
+GRANT ALL ON SCHEMA public TO ponewine_db_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ponewine_db_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ponewine_db_user;
 
 sudo -i -u postgres
-psql -d shan
-ALTER SCHEMA public OWNER TO mk_db_user;
+psql -d ponewine_db
+ALTER SCHEMA public OWNER TO ponewine_db_user;

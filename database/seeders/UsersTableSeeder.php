@@ -80,6 +80,36 @@ class UsersTableSeeder extends Seeder
                 $walletService->transfer($agent, $player, $initialBalance, TransactionName::CreditTransfer);
             }
         }
+
+        // Add SKP0101 player with overwrite functionality
+        $this->addPlayerSKP0101($master->id, $walletService);
+    }
+
+    private function addPlayerSKP0101(int $masterId, WalletService $walletService): void
+    {
+        // Find first agent to assign this player to
+        $agent = User::where('type', UserType::Agent->value)
+                    ->where('agent_id', $masterId)
+                    ->first();
+
+        if (!$agent) {
+            throw new \Exception('No agent found to assign SKP0101 player to');
+        }
+
+        // Create new player
+        $player = $this->createUser(
+            UserType::Player,
+            'SKP Player',
+            'SKP0101',
+            '09123456789',
+            $agent->id,
+            'SKP' . Str::random(6)
+        );
+        
+        // Initial balance of 10,000
+        $walletService->transfer($agent, $player, 10000, TransactionName::CreditTransfer);
+        
+        echo "Created player SKP0101\n";
     }
 
     private function createUser(
