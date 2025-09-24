@@ -233,7 +233,7 @@
                                 </a>
                             </li>
                            
-                            <!-- <li class="nav-item">
+                            <li class="nav-item">
                             <a href="{{ route('admin.reports.daily_win_loss') }}"
                                 class="nav-link {{ Route::currentRouteName() == 'admin.reports.daily_win_loss' ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-chart-line"></i>
@@ -241,7 +241,7 @@
                                     Daily Win/Loss
                                 </p>
                             </a>
-                        </li> -->
+                        </li>
 
 
                         @endcan
@@ -283,7 +283,7 @@
 
                         @endcan
                         @can('owner_access')
-                            <!-- <li
+                           <li
                                 class="nav-item">
                                 <a href="#" class="nav-link">
                                     <i class="fas fa-tools"></i>
@@ -308,15 +308,15 @@
                                         </a>
                                     </li>
 
-                                     <li class="nav-item">
+                                     <!-- <li class="nav-item">
                                         <a href=""
                                             class="nav-link">
                                             <i class="far fa-circle nav-icon"></i>
                                             <p>GSC GameType</p>
                                         </a>
-                                    </li> 
+                                    </li>  -->
                                 </ul>
-                            </li> -->
+                            </li> 
                         @endcan
 
                          <!-- 2D -->
@@ -538,7 +538,7 @@
                         </li>
                         @endcan
                                 @can('owner_access')
-                                <!-- <li class="nav-item menu-open">
+                                <li class="nav-item menu-open">
                                     <a href="{{ route('admin.report.index') }}"
                                         class="nav-link {{ Route::current()->getName() == 'admin.report.index' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
@@ -546,7 +546,7 @@
                                             Win/Lose Report
                                         </p>
                                     </a>
-                                </li> -->
+                                </li>
                                 @endcan
 
                         @can('player_view')
