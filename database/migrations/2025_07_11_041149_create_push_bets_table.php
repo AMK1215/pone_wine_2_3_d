@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('member_account', 64)->index();
             $table->string('currency', 8)->nullable();
             $table->unsignedBigInteger('product_code')->nullable();
-            $table->unsignedBigInteger('game_code')->nullable();
+            $table->string('game_code', 64)->nullable();
             $table->string('game_type', 32)->nullable();
 
             $table->string('wager_code', 64)->unique();
