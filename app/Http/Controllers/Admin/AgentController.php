@@ -90,8 +90,11 @@ class AgentController extends Controller
         // Get agents under current user
         $users = User::with(['roles', 'children.poneWinePlayer'])
             ->whereHas('roles', fn ($q) => $q->where('role_id', self::AGENT_ROLE))
-            ->when(! $isOwner && ! $isMaster, function ($q) use ($authUser) {
+            ->when(! $isOwner , function ($q) use ($authUser) {
                 $q->where('agent_id', $authUser->id); // Limit if not Owner/Master
+            })
+            ->when($isMaster, function ($q) use ($authUser) {
+                $q->where('agent_id',$authUser->id);
             })
             ->select('id', 'name', 'user_name', 'phone', 'status', 'referral_code')
             ->orderBy('created_at', 'desc')
